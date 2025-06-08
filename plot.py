@@ -1,6 +1,7 @@
 #%% import library
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.signal import welch
 import numpy as np
 import mne
 import glob
@@ -59,20 +60,71 @@ baseline.filter(l_freq=1., h_freq=40., fir_design='firwin')
 
 
 #%% Helper: Real-time data generator
-def realtime_data_generator(raw: mne.io.Raw) -> np.ndarray:
+def realtime_data_generator(raw: mne.io.Raw):
     """
-    Generator that yields one sample per channel at the raw's sampling rate,
-    simulating real-time data input.
+    Generator that yields one sample per channel from the raw data,
+    simulating real-time streaming.
 
     Yields:
     1D numpy array of shape (n_channels,) corresponding to each new sample.
     """
-    sfreq = int(raw.info['sfreq'])
     data = raw.get_data()  # shape: n_channels x n_times
     n_times = data.shape[1]
-    # Iterate through timepoints
     for t in range(n_times):
         yield data[:, t]
 
-a = realtime_data_generator(raw)
-print(a)
+# a = realtime_data_generator(raw)
+# print(a)
+# for idx, sample in enumerate(a):
+#     print(idx, sample)
+
+# %% Helper: compute baseline and band power
+def compute_bandpower(data_segment: np.ndarray, sfreq: float, band: tuple, window_samples: int) -> float:
+    """
+    Compute band power for a single-channel data segment using Welch's method.
+
+    Parameters:
+    -------------
+    data_segment : 1D numpy array
+        Time series data for one channel.
+    sfreq : float
+        Sampling frequency in Hz.
+    band : tuple
+        Frequency band (low_freq, high_freq) in Hz.
+    window_samples : int
+        Number of samples in the Welch window.
+
+    Returns:
+    --------
+    float
+        Integrated power within the specified band.
+    """
+    freqs, psd = welch(data_segment, fs=sfreq, nperseg=window_samples)
+    mask = (freqs >= band[0]) & (freqs <= band[1])
+    return np.trapz(psd[mask], freqs[mask])
+
+def compute_baseline_power(baseline: mne.io.Raw, band: tuple, window_sec: float) -> np.ndarray:
+    """
+    Compute baseline bandpower per channel over the entire baseline recording.
+
+    Parameters:
+    baseline : mne.io.Raw
+        Baseline data.
+    band : tuple
+        Frequency band (low, high) in Hz.
+    window_sec : float
+        Window length in seconds for power estimation.
+
+    Returns:
+    1D numpy array of shape (n_channels,) with baseline bandpower.
+    """
+    sfreq = baseline.info['sfreq']
+    window_samples = int(window_sec * sfreq)
+    data = baseline.get_data()
+    n_ch = data.shape[0]
+    baseline_power = np.zeros(n_ch)
+    for ch in range(n_ch):
+        baseline_power[ch] = compute_bandpower(data[ch], sfreq, band, window_samples)
+    return baseline_power
+
+# %% Main
