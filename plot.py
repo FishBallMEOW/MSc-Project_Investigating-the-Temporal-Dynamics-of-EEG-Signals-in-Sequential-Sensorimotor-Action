@@ -202,20 +202,49 @@ for idx, sample in enumerate(gen):
 ers_erd_stream = np.array(ers_erd_stream)  # shape: (n_windows, n_channels)
 n_windows = ers_erd_stream.shape[0]
 
-fig, ax = plt.subplots()
+ann     = raw.annotations
+onsets  = np.array(ann.onset)            # in seconds
+descs   = np.array(ann.description)      # e.g. 'T0','TASK1T2', etc.
+tol     = 10.0 / sfreq                    # tolerance
+current_event = ['']  # list so it’s mutable from inside update()
+
+fig = plt.figure(figsize=(10, 5))
+ax = fig.add_subplot(1, 1, 1)
+
+im, _ = mne.viz.plot_topomap(
+        ers_erd_stream[0],
+        raw.info,
+        axes=ax,
+        show=False,
+        sensors=True
+    )
+
+# attach a single colorbar
+cbar = fig.colorbar(im, ax=ax, orientation='vertical',
+                    fraction=0.046, pad=0.04)
+cbar.set_label("ERS/ERD (% change)")
 
 # Define update function: clear axes and replot topomap each time
 def update(frame_idx):
     ax.clear()
+    t = frame_idx / sfreq
+    
     data = ers_erd_stream[frame_idx]
-    mne.viz.plot_topomap(
+    im, _ = mne.viz.plot_topomap(
         data,
         raw.info,
         axes=ax,
         show=False,
         sensors=True
     )
-    ax.set_title(f"t = {frame_idx/sfreq:.2f}s")
+    # find any annotations whose onset is within ±tol of t
+    hits = np.abs(onsets - t) <= tol
+    if hits.any():
+        current_event[0] = descs[hits][0]        # first matching event
+    
+    if current_event[0]:
+        ax.set_title(f"t = {t:.2f}s — {current_event[0]}")
+
     # return list of artists (collections) for FuncAnimation
     return ax.collections
 
@@ -227,7 +256,8 @@ ani = FuncAnimation(
     interval=200,
     blit=False
 )
-ani.save('S00_R01_R05.gif', writer='PillowWriter', fps=10)
+
+ani.save('S001_R04.gif', writer='PillowWriter', fps=20)
 
 plt.show()
 # %%
