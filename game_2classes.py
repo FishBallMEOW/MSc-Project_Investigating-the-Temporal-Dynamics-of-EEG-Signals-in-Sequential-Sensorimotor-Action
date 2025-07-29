@@ -20,16 +20,12 @@ num_blocks        = 6
 
 # Define stimulus parameters
 frequencies = {
-    'left_hand':  400,  # Hz
+    'left_hand':  100,  # Hz
     'right_hand': 600,
-    'feet':  800,
-    'tongue': 1000
 }
 angles = {
-    'left_hand':  90,  # Degrees
-    'right_hand': 270,
-    'feet':  180,
-    'tongue': 360
+    'left_hand':  270,  # Degrees
+    'right_hand': 90,
 }
 
 # 2. Instruction page with sensory-mode selection
@@ -63,7 +59,7 @@ if 'escape' in keys:
 fixation = visual.TextStim(win, text='+', height=0.1, color='white')
 arrow    = visual.ShapeStim(
     win,
-    vertices=[(-0.05,0), (0,0.1), (0.05,0), (0,-0.03)],
+    vertices=[(-0.25,0), (0,0.5), (0.25,0), (0,-0.03)],
     fillColor='white',
     lineColor='white'
 )
