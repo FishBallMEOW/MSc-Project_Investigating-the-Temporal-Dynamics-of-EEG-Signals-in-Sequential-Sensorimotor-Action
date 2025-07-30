@@ -1,5 +1,23 @@
 from psychopy import visual, core, event, sound, gui
 import random
+from pylsl import StreamInfo, StreamOutlet, local_clock
+
+# === LSL MARKER STREAM ===
+marker_info   = StreamInfo(name='GameMarkers',
+                           type='Markers',
+                           channel_count=1,
+                           nominal_srate=0,
+                           channel_format='int32',
+                           source_id='psychopy_win_001')
+marker_outlet = StreamOutlet(marker_info)
+
+triggers = {
+    'baseline':     1,
+    'cue':          2,
+    'imagery':      3,
+    'inter_trial':  4,
+    'end':          5
+}
 
 # Helper to wait while allowing an Escape abort
 def wait_with_escape(duration):
@@ -57,13 +75,11 @@ if 'escape' in keys:
     core.quit()
 
 # --- EEG recording would start here ---
-# recording.start()
-
 # Pre-create stimuli objects
 fixation = visual.TextStim(win, text='+', height=0.1, color='white')
 arrow    = visual.ShapeStim(
     win,
-    vertices=[(-0.05,0), (0,0.1), (0.05,0), (0,-0.03)],
+    vertices=[(-0.25,0), (0,0.5), (0.25,0), (0,-0.03)],
     fillColor='white',
     lineColor='white'
 )
@@ -78,8 +94,8 @@ for block in range(num_blocks):
     
     for cls in block_trials:
         # Baseline
-        # recording.send_trigger('baseline')
         fixation.draw()
+        win.callOnFlip(marker_outlet.push_sample,[triggers['baseline']], local_clock())
         win.flip()
         wait_with_escape(baseline_time)
 
@@ -91,16 +107,18 @@ for block in range(num_blocks):
             arrow.draw()
         if mode in ('auditory', 'multisensory'):
             beeps[cls].play()
+        win.callOnFlip(marker_outlet.push_sample,[triggers['cue']], local_clock())
         win.flip()
         wait_with_escape(cue_time)
 
         # Motor imagery
         # recording.send_trigger('imagery')
+        win.callOnFlip(marker_outlet.push_sample,[triggers['imagery']], local_clock())
         win.flip()  # Clear cue
         wait_with_escape(imagery_time)
 
         # Inter-trial interval
-        # recording.send_trigger('inter_trial')
+        win.callOnFlip(marker_outlet.push_sample,[triggers['inter_trial']], local_clock())
         win.flip()
         wait_with_escape(iti_time)
 
@@ -123,6 +141,7 @@ thanks = visual.TextStim(win,
     height=0.08
 )
 thanks.draw()
+win.callOnFlip(marker_outlet.push_sample,[triggers['end']], local_clock())
 win.flip()
 wait_with_escape(5)
 
