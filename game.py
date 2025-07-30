@@ -93,7 +93,11 @@ arrow    = visual.ShapeStim(
     fillColor='white',
     lineColor='white'
 )
-beeps = {cls: sound.Sound(value=freq, secs=0.2) for cls, freq in frequencies.items()}
+
+beeps = {
+    cls: sound.Sound(value=frequencies[cls], secs=0.2)
+    for cls in classes
+}
 
 # 3 & 4. Run blocks and trials with balanced randomization
 for block in range(num_blocks):
@@ -114,7 +118,8 @@ for block in range(num_blocks):
             arrow.ori = angles[cls]
             arrow.draw()
         if mode in ('auditory', 'multisensory'):
-            beeps[cls].play()
+            beeps[cls].stop()        # ensure it’s not already playing
+            win.callOnFlip(beeps[cls].play)
         win.callOnFlip(marker_outlet.push_sample,[triggers['cue']], local_clock())
         win.flip()
         wait_with_escape(cue_time)
@@ -134,7 +139,7 @@ for block in range(num_blocks):
     if block < num_blocks - 1:
         rest = visual.TextStim(
             win,
-            text="1-minute break...\nPress ESC to abort.",
+            text="1-minute break...",
             color='white',
             height=0.08
         )
