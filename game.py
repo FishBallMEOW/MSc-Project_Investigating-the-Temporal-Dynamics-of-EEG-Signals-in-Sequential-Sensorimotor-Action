@@ -89,7 +89,7 @@ if 'escape' in keys:
 fixation = visual.TextStim(win, text='+', height=0.1, color='white')
 arrow    = visual.ShapeStim(
     win,
-    vertices=[(-0.25,0), (0,0.5), (0.25,0), (0,0)],
+    vertices=[(-0.25,0.5), (0,1), (0.25,0.5), (0,0.5)],
     fillColor='white',
     lineColor='white'
 )
@@ -114,6 +114,7 @@ for block in range(num_blocks):
 
         # Cue period
         win.flip()
+        fixation.draw()
         if mode in ('visual', 'multisensory'):
             arrow.ori = angles[cls]
             arrow.draw()
@@ -125,7 +126,7 @@ for block in range(num_blocks):
         wait_with_escape(cue_time)
 
         # Motor imagery
-        # recording.send_trigger('imagery')
+        fixation.draw()
         win.callOnFlip(marker_outlet.push_sample,[triggers['imagery']], local_clock())
         win.flip()  # Clear cue
         wait_with_escape(imagery_time)
