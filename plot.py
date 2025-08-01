@@ -152,7 +152,7 @@ def plot_ers_erd_topomap(ers_erd_stream: np.ndarray,
 
 #%% Main
 # Define data directory
-data_path = 'D:/user/Files_without_backup/MSc Project/MSc-Project_Investigating-the-Temporal-Dynamics-of-EEG-Signals-in-Sequential-Sensorimotor-Action/Data_from_dataset'
+data_path = 'D:/user/Files_without_backup/MSc_Project/MSc-Project_Investigating-the-Temporal-Dynamics-of-EEG-Signals-in-Sequential-Sensorimotor-Action/Data_from_dataset'
 edf_files = sorted(glob.glob(os.path.join(data_path, '*.edf')))
 
 # Load & concatenate EDFs with annotations
