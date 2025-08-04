@@ -1,3 +1,8 @@
+import numpy as np
+# Back-fill the deprecated name for PsychoPy
+if not hasattr(np, 'alltrue'):
+    np.alltrue = np.all
+
 from psychopy import visual, core, event, sound, gui
 import random
 from pylsl import StreamInfo, StreamOutlet, local_clock
