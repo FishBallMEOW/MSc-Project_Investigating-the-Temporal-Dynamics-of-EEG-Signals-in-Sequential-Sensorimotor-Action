@@ -46,7 +46,10 @@ class MotorImageryExperiment:
         self.marker_outlet = StreamOutlet(info)
         self.triggers = {
             'baseline':     1,
-            'cue':          2,
+            'left':         21,
+            'right':        22,
+            'up':           23,
+            'down':         24,
             'imagery':      3,
             'inter_trial':  4,
             'end':          5
@@ -155,14 +158,24 @@ class MotorImageryExperiment:
     def _cue_phase(self, cls):
         # draw fixation + cue
         self.fixation.draw()
+        # set arrow orientation
         if self.mode in ('visual', 'multisensory'):
             self.arrow.ori = self.angles[cls]
             self.arrow.draw()
+        # play sound
         if self.mode in ('auditory', 'multisensory'):
             self.beeps[cls].stop()
             self.win.callOnFlip(self.beeps[cls].play)
 
-        self.win.callOnFlip(self.marker_outlet.push_sample, [self.triggers['cue']], local_clock())
+        # map class to direction and push specific trigger
+        direction_map = {
+            'left_hand': 'left',
+            'right_hand': 'right',
+            'feet': 'down',
+            'tongue': 'up'
+        }
+        dir_key = direction_map[cls]
+        self.win.callOnFlip(self.marker_outlet.push_sample, [self.triggers[dir_key]], local_clock())
         self.win.flip()
         self.wait_with_escape(self.timings['cue'])
 
