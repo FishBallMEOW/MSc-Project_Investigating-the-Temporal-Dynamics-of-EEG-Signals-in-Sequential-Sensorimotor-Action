@@ -28,6 +28,8 @@ class LSLDataRecorder:
         self.eeg_chunk_size = eeg_chunk_size
         self.running = False
         self._setup_signal_handlers()
+        self._buffer = []            # small in-memory event buffer
+        self._buffer_size = 20       # flush every 20 events
 
     def _setup_signal_handlers(self):
         # allow graceful shutdown on SIGINT/SIGTERM
@@ -68,31 +70,51 @@ class LSLDataRecorder:
         self._writer.writerow(header)
         print(f"Recording… output will be saved to '{self.output_csv}'. Press Ctrl+C to stop.")
 
-    def start(self):
-        """Begin recording loop until stopped."""
-        self.running = True
-        self._resolve_streams()
-        self._prepare_output()
-        while self.running:
-            # Pull markers
-            m_samples, m_ts = self.marker_inlet.pull_chunk(timeout=0.0, max_samples=10)
-            m_ts = [ts + self.marker_offset for ts in m_ts]
-            for sample, ts in zip(m_samples, m_ts):
-                val = sample[0]
-                print(f"╞═ Received marker {val} @ {ts:.6f}")
-                row = [f"{ts:.6f}", 'Marker'] + [''] * self.eeg_inlet.channel_count + [str(val)]
-                self._writer.writerow(row)
+    def _flush_buffer(self):
+        # sort by timestamp
+        self._buffer.sort(key=lambda e: e[0])
+        # write them all out
+        for ts, kind, payload in self._buffer:
+            if kind == 'Marker':
+                row = [f"{ts:.6f}", 'Marker'] + [''] * self.eeg_inlet.channel_count + [str(payload)]
+            else:  # EEG
+                row = [f"{ts:.6f}", 'EEG'] + [f"{v:.3f}" for v in payload] + ['']
+            self._writer.writerow(row)
+        # reset buffer
+        self._buffer.clear()
 
-            # Pull EEG
-            eeg_samples, eeg_ts = self.eeg_inlet.pull_chunk(
-                timeout=0.0,
-                max_samples=self.eeg_chunk_size
-            )
-            eeg_ts = [ts + self.eeg_offset for ts in eeg_ts]
-            for sample, ts in zip(eeg_samples, eeg_ts):
-                row = [f"{ts:.6f}", 'EEG'] + [f"{v:.3f}" for v in sample] + ['']
-                self._writer.writerow(row)
-        self._cleanup()
+    def start(self):
+        try:
+            """Begin recording loop until stopped."""
+            self.running = True
+            self._resolve_streams()
+            self._prepare_output()
+            while self.running:
+                # Pull markers
+                m_samples, m_ts = self.marker_inlet.pull_chunk(timeout=0.0, max_samples=10)
+                m_ts = [ts + self.marker_offset for ts in m_ts]
+
+                # Pull EEG
+                eeg_samples, eeg_ts = self.eeg_inlet.pull_chunk(
+                    timeout=0.0,
+                    max_samples=self.eeg_chunk_size
+                )
+                eeg_ts = [ts + self.eeg_offset for ts in eeg_ts]
+                
+                # 3) Append into buffer
+                for (sample,), ts in zip(m_samples, m_ts):
+                    self._buffer.append((ts, 'Marker', sample))
+                for sample, ts in zip(eeg_samples, eeg_ts):
+                    self._buffer.append((ts, 'EEG', sample))
+
+                # 4) When buffer big enough, sort & flush
+                    if len(self._buffer) >= self._buffer_size:
+                        self._flush_buffer()
+        finally:
+            # drain any leftovers, even if you Ctrl-C or an error is raised
+            if self._buffer:
+                self._flush_buffer()
+            self._cleanup()
 
     def stop(self):
         """Stop the recording loop gracefully."""
