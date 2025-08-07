@@ -1,66 +1,103 @@
 """
-Recorder module: handles LSL EEG streaming and saving to CSV/EDF
+Module defining a class to record EEG and marker streams to CSV via LSL.
 """
 import csv
-import time
-import queue
+import signal
+import sys
 from datetime import datetime
-import numpy as np
-import pyedflib
+import time
 from pylsl import StreamInlet, resolve_byprop, local_clock
 
-class Recorder:
-    def __init__(self, stream_name='EEG', chunk_size=32, output_prefix=None, event_queue=None, start_event=None):
-        self.stream_name = stream_name
-        self.chunk_size = chunk_size
-        self.event_queue = event_queue
-        self.start_event = start_event
-        self.running = True
-        prefix = output_prefix or datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.csv_path = f"{prefix}_eeg.csv"
-        self.edf_path = f"{prefix}.edf"
+class LSLDataRecorder:
+    """
+    Records EEG and marker streams from LSL into a timestamped CSV file.
 
-    def stop(self):
+    Usage:
+        recorder = LSLDataRecorder(
+            eeg_name='EEG',
+            marker_name='GameMarkers',
+            eeg_chunk_size=32
+        )
+        recorder.start()
+        # ... later, to stop:
+        recorder.stop()
+    """
+    def __init__(self,eeg_name='EEG',marker_name='GameMarkers',eeg_chunk_size=32):
+        self.eeg_name = eeg_name
+        self.marker_name = marker_name
+        self.eeg_chunk_size = eeg_chunk_size
+        self.running = False
+        self._setup_signal_handlers()
+
+    def _setup_signal_handlers(self):
+        # allow graceful shutdown on SIGINT/SIGTERM
+        signal.signal(signal.SIGINT, self._handle_exit)
+        signal.signal(signal.SIGTERM, self._handle_exit)
+
+    def _handle_exit(self, sig, frame):
         self.running = False
 
-    def run(self):
-        # wait for start
-        print('Recorder waiting for start...')
-        self.start_event.wait()
-        print('Recorder started.')
-        streams = resolve_byprop('name', self.stream_name, timeout=5)
-        if not streams:
-            raise RuntimeError(f"No LSL stream '{self.stream_name}'")
-        inlet = StreamInlet(streams[0], max_buflen=10)
-        time.sleep(1)
-        offset = inlet.time_correction()
+    def _resolve_streams(self):
+        print(f"Looking for EEG stream '{self.eeg_name}'...")
+        eegs = resolve_byprop('name', self.eeg_name, timeout=5)
+        if not eegs:
+            print(f"ERROR: Couldn’t find EEG stream '{self.eeg_name}'")
+            sys.exit(1)
+        self.eeg_inlet = StreamInlet(eegs[0], max_buflen=10)
+        time.sleep(1.0)
+        self.eeg_offset = self.eeg_inlet.time_correction()
+        print(f"EEG offset: {self.eeg_offset}")
 
-        # prepare CSV
-        header = ['timestamp','type'] + [f'ch{i+1}' for i in range(inlet.channel_count)] + ['marker']
-        samples = []
-        with open(self.csv_path, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(header)
-            while self.running or not self.event_queue.empty():
-                data, ts = inlet.pull_chunk(max_samples=self.chunk_size, timeout=0.1)
-                ts = [t+offset for t in ts]
-                for sample, t in zip(data, ts):
-                    writer.writerow([f'{t:.6f}','EEG'] + [f'{v:.3f}' for v in sample] + [''])
-                    samples.append(sample)
+        print(f"Looking for marker stream '{self.marker_name}'...")
+        marks = resolve_byprop('name', self.marker_name, timeout=5)
+        if not marks:
+            print(f"ERROR: Couldn’t find marker stream '{self.marker_name}'")
+            sys.exit(1)
+        self.marker_inlet = StreamInlet(marks[0], max_buflen=10)
+        time.sleep(1.0)
+        self.marker_offset = self.marker_inlet.time_correction()
+        print(f"Marker offset: {self.marker_offset}")
 
-                while not self.event_queue.empty():
-                    trig, t = self.event_queue.get()
-                    writer.writerow([f'{t:.6f}','Marker'] + ['']*inlet.channel_count + [str(trig)])
+    def _prepare_output(self):
+        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.output_csv = f"{now}_eeg_with_markers.csv"
+        header = ['timestamp', 'type'] + \
+            [f'ch{i}' for i in range(1, self.eeg_inlet.channel_count + 1)] + ['marker']
+        self._csvfile = open(self.output_csv, 'w', newline='')
+        self._writer = csv.writer(self._csvfile)
+        self._writer.writerow(header)
+        print(f"Recording… output will be saved to '{self.output_csv}'. Press Ctrl+C to stop.")
 
-        # write EDF
-        nchan, sfreq = inlet.channel_count, int(inlet.nominal_srate)
-        hdrs=[]
-        for i in range(nchan): hdrs.append({
-            'label':f'ch{i+1}','dimension':'uV','sample_rate':sfreq,
-            'physical_min':-100,'physical_max':100,'digital_min':-32768,'digital_max':32767,
-            'transducer':'EEG','prefilter':''
-        })
-        with pyedflib.EdfWriter(self.edf_path,nchan) as edf:
-            edf.setSignalHeaders(hdrs)
-            edf.writeSamples(np.array(samples).T)
-        print(f"Saved CSV: {self.csv_path}, EDF: {self.edf_path}")
+    def start(self):
+        """Begin recording loop until stopped."""
+        self.running = True
+        self._resolve_streams()
+        self._prepare_output()
+        while self.running:
+            # Pull markers
+            m_samples, m_ts = self.marker_inlet.pull_chunk(timeout=0.0, max_samples=10)
+            m_ts = [ts + self.marker_offset for ts in m_ts]
+            for sample, ts in zip(m_samples, m_ts):
+                val = sample[0]
+                print(f"╞═ Received marker {val} @ {ts:.6f}")
+                row = [f"{ts:.6f}", 'Marker'] + [''] * self.eeg_inlet.channel_count + [str(val)]
+                self._writer.writerow(row)
+
+            # Pull EEG
+            eeg_samples, eeg_ts = self.eeg_inlet.pull_chunk(
+                timeout=0.0,
+                max_samples=self.eeg_chunk_size
+            )
+            eeg_ts = [ts + self.eeg_offset for ts in eeg_ts]
+            for sample, ts in zip(eeg_samples, eeg_ts):
+                row = [f"{ts:.6f}", 'EEG'] + [f"{v:.3f}" for v in sample] + ['']
+                self._writer.writerow(row)
+        self._cleanup()
+
+    def stop(self):
+        """Stop the recording loop gracefully."""
+        self.running = False
+
+    def _cleanup(self):
+        self._csvfile.close()
+        print(f"\nDone — data saved to '{self.output_csv}'")

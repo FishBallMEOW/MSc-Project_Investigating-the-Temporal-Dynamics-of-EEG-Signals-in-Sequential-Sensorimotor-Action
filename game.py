@@ -37,7 +37,7 @@ def wait_with_escape(duration):
 # 1. Setup variables for timing and trial/block structure
 baseline_time     = 2.0    # seconds
 cue_time          = 1.0    # seconds
-imagery_time      = 4.0    # seconds
+imagery_time      = 8.0    # seconds
 iti_time          = 2.0    # seconds
 trials_per_block  = 48
 num_blocks        = 6

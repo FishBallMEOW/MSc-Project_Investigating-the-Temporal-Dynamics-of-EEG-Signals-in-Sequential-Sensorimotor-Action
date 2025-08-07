@@ -1,31 +1,22 @@
-#!/usr/bin/env python3
-"""
-Main entry: launches Recorder and Experiment
-"""
-import threading, queue
-from recorder import Recorder
-from gui import GUI
-from experiment import Experiment
+import threading
+from experiment import MotorImageryExperiment
+from recorder import LSLDataRecorder
 
-def main():
-    event_queue = queue.Queue()
-    start_event = threading.Event()
-
-    gui = GUI()
-    settings = gui.get_setup()
-    if settings is None: return
-    info = gui.get_participant_info()
-    if info is None: return
-
-    recorder = Recorder(event_queue=event_queue, start_event=start_event)
-    exp = Experiment(settings, info, event_queue, start_event)
-
-    rec_thread = threading.Thread(target=recorder.run,daemon=True)
+if __name__ == '__main__':
+    # Instantiate recorder
+    recorder = LSLDataRecorder(
+        eeg_name='EEG',
+        marker_name='GameMarkers',
+        eeg_chunk_size=32
+    )
+    # Start recording in a background thread
+    rec_thread = threading.Thread(target=recorder.start, daemon=True)
     rec_thread.start()
 
+    # Run the motor imagery experiment
+    exp = MotorImageryExperiment()
     exp.run()
+
+    # After experiment ends, stop recorder and wait for thread
     recorder.stop()
     rec_thread.join()
-
-if __name__=='__main__':
-    main()

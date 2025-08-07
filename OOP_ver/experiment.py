@@ -1,77 +1,209 @@
-#!/usr/bin/env python3
-"""
-Experiment module: motor imagery trial flow
-"""
 import numpy as np
+from psychopy import visual, core, event, sound, gui
+import random
+from pylsl import StreamInfo, StreamOutlet, local_clock
+
 # Back-fill the deprecated name for PsychoPy
 if not hasattr(np, 'alltrue'):
     np.alltrue = np.all
-    
-import random
-from pylsl import local_clock
-from psychopy import visual, core, event, sound
-from gui import GUI
 
-class Experiment:
-    def __init__(self, settings, info, event_queue, start_event):
-        self.mode, self.class_mode, self.feedback = settings
-        self.initials, self.age, self.vision = info
-        self.event_queue = event_queue
-        self.start_event = start_event
+
+class MotorImageryExperiment:
+    """
+    Class-based implementation of a Motor Imagery experiment with LSL marker streaming.
+
+    Attributes:
+        mode (str): 'visual', 'auditory', or 'multisensory'.
+        class_mode (str): '2-class' or '4-class'.
+        classes (list): List of motor imagery classes.
+        timings (dict): Timing parameters for baseline, cue, imagery, ITI, and breaks.
+        triggers (dict): Integer codes for each event marker.
+        frequencies (dict): Frequencies for auditory cues.
+        angles (dict): Angles for visual arrow cues.
+        win (psychopy.visual.Window): PsychoPy window object.
+        marker_outlet (StreamOutlet): LSL outlet for sending markers.
+        fixation (psychopy.visual.TextStim): Fixation cross stimulus.
+        arrow (psychopy.visual.ShapeStim): Arrow cue stimulus.
+        beeps (dict): Sound stimuli for each class.
+    """
+
+    def __init__(self):
+        self._init_stream()
+        self._init_parameters()
+        self._get_user_settings()
+        self._create_window()
+        self._create_stimuli()
+
+    def _init_stream(self):
+        info = StreamInfo(
+            name='GameMarkers',
+            type='Markers',
+            channel_count=1,
+            nominal_srate=0,
+            channel_format='int32',
+            source_id='psychopy_win_001'
+        )
+        self.marker_outlet = StreamOutlet(info)
+        self.triggers = {
+            'baseline':     1,
+            'cue':          2,
+            'imagery':      3,
+            'inter_trial':  4,
+            'end':          5
+        }
+
+    def _init_parameters(self):
+        # Timing parameters
+        self.timings = {
+            'baseline': 2.0,
+            'cue':      1.0,
+            'imagery':  8.0,
+            'iti':      2.0,
+            'break':    60.0
+        }
+        self.num_blocks = 6
+        self.trials_per_block = 48
+
+        # Stimulus properties
+        self.frequencies = {
+            'left_hand': 1000,
+            'right_hand': 600,
+            'feet': 800,
+            'tongue': 400
+        }
+        self.angles = {
+            'left_hand': 270,
+            'right_hand': 90,
+            'feet': 180,
+            'tongue': 360
+        }
+
+    def _get_user_settings(self):
+        dlg_config = {
+            'Sensory Mode': ['visual', 'auditory', 'multisensory'],
+            'Class Mode': ['2-class', '4-class']
+        }
+        dlg = gui.DlgFromDict(dictionary=dlg_config, title='MI Task Setup')
+        if not dlg.OK:
+            core.quit()
+        self.mode = dlg_config['Sensory Mode']
+        self.class_mode = dlg_config['Class Mode']
+
+        if self.class_mode == '2-class':
+            self.classes = ['left_hand', 'right_hand']
+        else:
+            self.classes = ['left_hand', 'right_hand', 'feet', 'tongue']
+
+    def _create_window(self):
         self.win = visual.Window(fullscr=True, color='black', units='norm')
-        self._init_params()
 
-    def _init_params(self):
-        from datetime import datetime
-        self.TRIGGERS = dict(baseline=1,cue=2,imagery=3,inter_trial=4,end=5)
-        self.times = dict(baseline=2,cue=1,imagery=4,iti=2)
-        freqs = dict(left_hand=1000,right_hand=600,feet=800,tongue=400)
-        angs = dict(left_hand=270,right_hand=90,feet=180,tongue=360)
-        self.classes = ['left_hand','right_hand'] if self.class_mode=='2-class' else list(freqs)
-        self.beeps = {c:sound.Sound(freqs[c],secs=0.2) for c in self.classes}
-        self.fix = visual.TextStim(self.win,'+',color='white',height=0.1)
-        self.arrow = visual.ShapeStim(self.win,vertices=[(-0.25,0.5),(0,1),(0.25,0.5),(0,0.5)],fillColor='white',lineColor='white')
-        self.angles = angs
-        self.trials_per_block = 48; self.num_blocks = 6
+        instr_text = (
+            "Welcome to the Motor Imagery Experiment.\n\n"
+            f"Sensory mode: {self.mode}   Class mode: {self.class_mode}\n\n"
+            "Press SPACE to begin, or ESC at any time to abort."
+        )
+        instr = visual.TextStim(self.win, text=instr_text, color='white', height=0.07)
+        instr.draw()
+        self.win.flip()
+        keys = event.waitKeys(keyList=['space', 'escape'])
+        if 'escape' in keys:
+            self._cleanup()
 
-    def _log(self, trig):
-        ts = local_clock()
-        self.event_queue.put((self.TRIGGERS[trig], ts))
+    def _create_stimuli(self):
+        self.fixation = visual.TextStim(self.win, text='+', height=0.1, color='white')
+        self.arrow = visual.ShapeStim(
+            self.win,
+            vertices=[(-0.25, 0.5), (0, 1), (0.25, 0.5), (0, 0.5)],
+            fillColor='white',
+            lineColor='white'
+        )
+        self.beeps = {
+            cls: sound.Sound(value=self.frequencies[cls], secs=0.2)
+            for cls in self.classes
+        }
 
-    def _wait(self,dur):
-        clock=core.Clock()
-        while clock.getTime()<dur:
-            if event.getKeys(['escape']): core.quit()
+    def wait_with_escape(self, duration):
+        timer = core.Clock()
+        while timer.getTime() < duration:
+            if event.getKeys(keyList=['escape']):
+                self._cleanup()
             core.wait(0.01)
 
     def run(self):
-        # show instructions
-        instr_text=(f"Participant: {self.initials} Age:{self.age} Vision:{self.vision}\n"
-                    "Press SPACE to begin or ESC to abort.")
-        if not GUI().show_instructions(self.win,instr_text): return
-        self.start_event.set()
-
-        for b in range(self.num_blocks):
-            trials=self.classes*(self.trials_per_block//len(self.classes))
+        for block in range(self.num_blocks):
+            trials = self.classes * (self.trials_per_block // len(self.classes))
             random.shuffle(trials)
-            for c in trials:
-                # baseline
-                self.fix.draw(); self.win.flip(); self._log('baseline'); self._wait(self.times['baseline'])
-                # cue
-                if self.mode in ('visual','multisensory'):
-                    self.arrow.ori=self.angles[c]; self.arrow.draw()
-                if self.mode in ('auditory','multisensory'):
-                    self.beeps[c].play()
-                self.win.flip(); self._log('cue'); self._wait(self.times['cue']); self.beeps[c].stop()
-                # imagery
-                self.fix.draw(); self.win.flip(); self._log('imagery'); self._wait(self.times['imagery'])
-                # iti
-                self.win.flip(); self._log('inter_trial'); self._wait(self.times['iti'])
-            # break
-            if b<self.num_blocks-1:
-                rest=visual.TextStim(self.win,'1-minute break...',color='white',height=0.08)
-                rest.draw(); self.win.flip(); self._wait(60)
-        # end
-        thanks=visual.TextStim(self.win,'Experiment complete. ESC to close.',color='white',height=0.08)
-        thanks.draw(); self.win.flip(); self._log('end'); self._wait(5)
+            self._run_block(trials)
+            if block < self.num_blocks - 1:
+                self._take_break()
+
+        self._finish()
+
+    def _run_block(self, trials):
+        for cls in trials:
+            self._baseline_phase()
+            self._cue_phase(cls)
+            self._imagery_phase()
+            self._iti_phase()
+
+    def _baseline_phase(self):
+        self.fixation.draw()
+        self.win.callOnFlip(self.marker_outlet.push_sample, [self.triggers['baseline']], local_clock())
+        self.win.flip()
+        self.wait_with_escape(self.timings['baseline'])
+
+    def _cue_phase(self, cls):
+        # draw fixation + cue
+        self.fixation.draw()
+        if self.mode in ('visual', 'multisensory'):
+            self.arrow.ori = self.angles[cls]
+            self.arrow.draw()
+        if self.mode in ('auditory', 'multisensory'):
+            self.beeps[cls].stop()
+            self.win.callOnFlip(self.beeps[cls].play)
+
+        self.win.callOnFlip(self.marker_outlet.push_sample, [self.triggers['cue']], local_clock())
+        self.win.flip()
+        self.wait_with_escape(self.timings['cue'])
+
+    def _imagery_phase(self):
+        self.fixation.draw()
+        self.win.callOnFlip(self.marker_outlet.push_sample, [self.triggers['imagery']], local_clock())
+        self.win.flip()
+        self.wait_with_escape(self.timings['imagery'])
+
+    def _iti_phase(self):
+        self.win.callOnFlip(self.marker_outlet.push_sample, [self.triggers['inter_trial']], local_clock())
+        self.win.flip()
+        self.wait_with_escape(self.timings['iti'])
+
+    def _take_break(self):
+        rest = visual.TextStim(
+            self.win,
+            text="1-minute break...",
+            color='white',
+            height=0.08
+        )
+        rest.draw()
+        self.win.flip()
+        self.wait_with_escape(self.timings['break'])
+
+    def _finish(self):
+        thanks = visual.TextStim(
+            self.win,
+            text="Experiment complete. Thank you!\n(ESC will also close)",
+            color='white',
+            height=0.08
+        )
+        self.win.callOnFlip(self.marker_outlet.push_sample, [self.triggers['end']], local_clock())
+        thanks.draw()
+        self.win.flip()
+        self.wait_with_escape(5)
+        self._cleanup()
+
+    def _cleanup(self):
         self.win.close()
+        core.quit()
+
+
+
