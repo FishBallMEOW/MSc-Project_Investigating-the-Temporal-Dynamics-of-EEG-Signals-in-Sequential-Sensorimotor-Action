@@ -30,9 +30,10 @@ class MotorImageryExperiment:
 
     def __init__(self):
         self._init_trigger_stream()
+        self._init_user_setting_stream()
+        self._init_user_info_stream()
         self._init_parameters()
         self._get_user_settings()
-        self._init_user_info_stream()
         self._get_user_info()
         self._create_window()
         self._create_stimuli()
@@ -84,21 +85,51 @@ class MotorImageryExperiment:
             'tongue': 360
         }
 
+    def _init_user_setting_stream(self):
+        """
+        Initialize an LSL stream to send participant settings.
+        """
+        info = StreamInfo(
+            name='UserSettings',
+            type='UserSettings',
+            channel_count=1,
+            nominal_srate=0,
+            channel_format='string',
+            source_id='psychopy_usersettings_001'
+        )
+        self.usersettings_outlet = StreamOutlet(info)
+
     def _get_user_settings(self):
         dlg_config = {
             'Sensory Mode': ['visual', 'auditory', 'multisensory'],
-            'Class Mode': ['2-class', '4-class']
+            'Class Mode':   ['2-class', '4-class']
         }
         dlg = gui.DlgFromDict(dictionary=dlg_config, title='MI Task Setup')
         if not dlg.OK:
             core.quit()
-        self.mode = dlg_config['Sensory Mode']
-        self.class_mode = dlg_config['Class Mode']
 
+        # Extract selections
+        self.mode       = dlg_config['Sensory Mode']
+        self.class_mode = dlg_config['Class Mode']
         if self.class_mode == '2-class':
             self.classes = ['left_hand', 'right_hand']
         else:
             self.classes = ['left_hand', 'right_hand', 'feet', 'tongue']
+
+        # --- NEW: send settings over LSL as a JSON string ---
+        settings = {
+            'mode':       self.mode,
+            'class_mode': self.class_mode,
+            'classes':    self.classes
+        }
+        try:
+            settings_json = json.dumps(settings)
+        except Exception:
+            # fallback to str if something odd happens
+            settings_json = str(settings)
+        # push with timestamp
+        self.usersettings_outlet.push_sample([settings_json], local_clock())
+        print(f"User settings sent: {settings_json}")
     
     def _init_user_info_stream(self):
         """
