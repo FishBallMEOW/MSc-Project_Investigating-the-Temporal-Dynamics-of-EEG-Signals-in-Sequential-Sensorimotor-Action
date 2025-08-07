@@ -1,18 +1,8 @@
 import threading
-import json
-from pylsl import resolve_stream, StreamInlet
 from experiment import MotorImageryExperiment
 from recorder import LSLDataRecorder
 
 if __name__ == '__main__':
-    # Resolve the participant info LSL stream
-    print("Resolving UserInfo LSL stream...")
-    userinfo_streams = resolve_stream('type', 'UserInfo', timeout=5.0)
-    if not userinfo_streams:
-        raise RuntimeError("No UserInfo LSL stream found")
-    userinfo_inlet = StreamInlet(userinfo_streams[0])
-    print("Waiting for participant info sample...")
-
     # Instantiate recorder
     recorder = LSLDataRecorder(
         eeg_name='EEG',

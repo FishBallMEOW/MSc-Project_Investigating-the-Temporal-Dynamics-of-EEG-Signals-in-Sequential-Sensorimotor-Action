@@ -22,9 +22,10 @@ class LSLDataRecorder:
         # ... later, to stop:
         recorder.stop()
     """
-    def __init__(self,eeg_name='EEG',marker_name='GameMarkers',eeg_chunk_size=32):
+    def __init__(self,eeg_name='EEG',marker_name='GameMarkers',userinfo_name='UserInfo',eeg_chunk_size=32):
         self.eeg_name = eeg_name
         self.marker_name = marker_name
+        self.userinfo_name = userinfo_name
         self.eeg_chunk_size = eeg_chunk_size
         self.running = False
         self._setup_signal_handlers()
@@ -49,6 +50,16 @@ class LSLDataRecorder:
         time.sleep(1.0)
         self.eeg_offset = self.eeg_inlet.time_correction()
         print(f"EEG offset: {self.eeg_offset}")
+
+        print(f"Looking for userinfo stream '{self.userinfo_name}'...")
+        ui_streams = resolve_byprop('name', self.userinfo_name, timeout=5)
+        if not ui_streams:
+            print(f"ERROR: Couldn’t find userinfo stream '{self.userinfo_name}'")
+            sys.exit(1)
+        self.userinfo_inlet = StreamInlet(ui_streams[0], max_buflen=360)
+        time.sleep(1.0)
+        self.userinfo_offset = self.userinfo_inlet.time_correction()
+        print(f"UserInfo offset: {self.userinfo_offset}")
 
         print(f"Looking for marker stream '{self.marker_name}'...")
         marks = resolve_byprop('name', self.marker_name, timeout=5)
