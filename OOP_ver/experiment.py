@@ -2,6 +2,7 @@ import numpy as np
 from psychopy import visual, core, event, sound, gui
 import random
 from pylsl import StreamInfo, StreamOutlet, local_clock
+import json
 
 # Back-fill the deprecated name for PsychoPy
 if not hasattr(np, 'alltrue'):
@@ -28,13 +29,15 @@ class MotorImageryExperiment:
     """
 
     def __init__(self):
-        self._init_stream()
+        self._init_trigger_stream()
         self._init_parameters()
         self._get_user_settings()
+        self._init_user_info_stream()
+        self._get_user_info()
         self._create_window()
         self._create_stimuli()
 
-    def _init_stream(self):
+    def _init_trigger_stream(self):
         info = StreamInfo(
             name='GameMarkers',
             type='Markers',
@@ -96,6 +99,41 @@ class MotorImageryExperiment:
             self.classes = ['left_hand', 'right_hand']
         else:
             self.classes = ['left_hand', 'right_hand', 'feet', 'tongue']
+    
+    def _init_user_info_stream(self):
+        """
+        Initialize an LSL stream to send participant information.
+        """
+        info = StreamInfo(
+            name='UserInfo',
+            type='UserInfo',
+            channel_count=1,
+            nominal_srate=0,
+            channel_format='string',
+            source_id='psychopy_userinfo_001'
+        )
+        self.userinfo_outlet = StreamOutlet(info)
+
+    def _get_user_info(self):
+        """
+        Collect user information via a dialog and send it over LSL.
+        """
+        user_config = {
+            'Initials': '',
+            'Age': '',
+            'Gender': ['Male', 'Female', 'Other', 'Prefer not to say'],
+            'Vision': ['Normal', 'Corrected (glasses/contact lenses)', 'Impaired']
+        }
+        dlg = gui.DlgFromDict(dictionary=user_config, title='Participant Info')
+        if not dlg.OK:
+            core.quit()
+        # Prepare and send JSON-formatted user info
+        try:
+            user_info_json = json.dumps(user_config)
+        except Exception:
+            user_info_json = str(user_config)
+        # Push the user info sample with a timestamp
+        self.userinfo_outlet.push_sample([user_info_json], local_clock())
 
     def _create_window(self):
         self.win = visual.Window(fullscr=True, color='black', units='norm')
