@@ -62,14 +62,14 @@ class MotorImageryExperiment:
     def _init_parameters(self):
         # Timing parameters
         self.timings = {
-            'baseline': 2.0,
+            'baseline': 4.0,
             'cue':      1.0,
-            'imagery':  8.0,
-            'iti':      2.0,
+            'imagery':  10.0,
+            'iti':      6.0,
             'break':    60.0
         }
         self.num_blocks = 6
-        self.trials_per_block = 48
+        self.trials_per_block = 20
 
         # Stimulus properties
         self.frequencies = {
@@ -182,7 +182,7 @@ class MotorImageryExperiment:
             self._cleanup()
 
     def _create_stimuli(self):
-        self.fixation = visual.TextStim(self.win, text='+', height=0.1, color='white')
+        self.fixation = visual.TextStim(self.win, text='+', height=0.5, color='white')
         self.arrow = visual.ShapeStim(
             self.win,
             vertices=[(-0.25, 0.5), (0, 1), (0.25, 0.5), (0, 0.5)],
@@ -190,7 +190,7 @@ class MotorImageryExperiment:
             lineColor='white'
         )
         self.beeps = {
-            cls: sound.Sound(value=self.frequencies[cls], secs=0.2)
+            cls: sound.Sound(value=self.frequencies[cls], secs=self.timings['cue'])
             for cls in self.classes
         }
 
@@ -204,6 +204,7 @@ class MotorImageryExperiment:
     def run(self):
         for block in range(self.num_blocks):
             trials = self.classes * (self.trials_per_block // len(self.classes))
+            print(trials)
             random.shuffle(trials)
             self._run_block(trials)
             if block < self.num_blocks - 1:
