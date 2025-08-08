@@ -39,6 +39,13 @@ class LSLDataRecorder:
         self._plot_buffer = []                # will hold (timestamp, sample) tuples
         self._plot_buffer_lock = threading.Lock()
 
+        # metadata placeholders
+        self.metadata_received = False
+        self.settings_json = None
+        self.userinfo_json = None
+        self.us_ts = None
+        self.ui_ts = None
+
         self._setup_signal_handlers()
 
     def _setup_signal_handlers(self):
@@ -94,6 +101,31 @@ class LSLDataRecorder:
         self.marker_offset = self.marker_inlet.time_correction()
         print(f"Marker offset: {self.marker_offset}")
 
+    def _wait_for_metadata(self):
+        # Block until both UserSettings and UserInfo samples are received
+        print("Waiting for UserSettings sample…")
+        # Keep pulling until we get a valid timestamp
+        while True:
+            us_sample, us_ts = self.usersettings_inlet.pull_sample(timeout=1.0)
+            if us_ts and us_sample:
+                break
+        us_ts += self.usersettings_offset
+        self.settings_json = us_sample[0]
+        self.us_ts = us_ts
+        print(f"UserSettings received at {us_ts:.6f}: {self.settings_json}")
+
+        print("Waiting for UserInfo sample…")
+        while True:
+            ui_sample, ui_ts = self.userinfo_inlet.pull_sample(timeout=1.0)
+            if ui_ts and ui_sample:
+                break
+        ui_ts += self.userinfo_offset
+        self.userinfo_json = ui_sample[0]
+        self.ui_ts = ui_ts
+        print(f"UserInfo received at {ui_ts:.6f}: {self.userinfo_json}")
+
+        self.metadata_received = True
+
     def _prepare_output(self):
         # 1) create file & writer
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -109,72 +141,76 @@ class LSLDataRecorder:
         )
         self._writer.writerow(header)
 
-        # 3) **block until we get both user‐metadata samples**
-        print("Waiting for UserSettings sample…")
-        us_sample, us_ts = self.usersettings_inlet.pull_sample(timeout=10.0)
-        if us_sample is None:
-            print("ERROR: timed out waiting for UserSettings")
-            sys.exit(1)
-        us_ts += self.usersettings_offset
-        settings_json = us_sample[0]
-
-        print("Waiting for UserInfo sample…")
-        ui_sample, ui_ts = self.userinfo_inlet.pull_sample(timeout=10.0)
-        if ui_sample is None:
-            print("ERROR: timed out waiting for UserInfo")
-            sys.exit(1)
-        ui_ts += self.userinfo_offset
-        userinfo_json = ui_sample[0]
-
-        # 4) write them into the **first data row**
-        #    here we combine both JSONs into the new columns
+        # First row: metadata
         first_row = (
-            [f"{us_ts:.6f}", 'Setup']
+            [f"{self.us_ts:.6f}", 'Setup']
             + [''] * self.eeg_inlet.channel_count
-            + ['']  # marker col
-            + [settings_json, userinfo_json]
+            + ['']
+            + [self.settings_json, self.userinfo_json]
         )
         self._writer.writerow(first_row)
-
         print(f"Recording… data will be saved to '{self.output_csv}'. Press Ctrl+C to stop.")
+
+    def _collect_loop(self):
+        # Continuously pull data and buffer for plotting/writing
+        while self.running:
+            # Pull markers
+            m_samples, m_ts = self.marker_inlet.pull_chunk(timeout=0.0, max_samples=10)
+            m_ts = [ts + self.marker_offset for ts in m_ts]
+
+            # Pull EEG
+            eeg_samples, eeg_ts = self.eeg_inlet.pull_chunk(
+                timeout=0.0,
+                max_samples=self.eeg_chunk_size
+            )
+            eeg_ts = [ts + self.eeg_offset for ts in eeg_ts]
+
+            # Stash for plotting
+            with self._plot_buffer_lock:
+                for sample, ts in zip(eeg_samples, eeg_ts):
+                    self._plot_buffer.append((ts, sample))
+
+            # Buffer for CSV writing
+            for (sample,), ts in zip(m_samples, m_ts):
+                self._buffer.append((ts, 'Marker', sample))
+            for sample, ts in zip(eeg_samples, eeg_ts):
+                self._buffer.append((ts, 'EEG', sample))
+
+            # Flush if enough and metadata is set
+            if self.metadata_received and len(self._buffer) >= self._buffer_size:
+                self._flush_buffer()
+
+            # Small pause to yield
+            time.sleep(0.001)
 
     def start(self):
         try:
-            """Begin recording loop until stopped."""
             self.running = True
             self._resolve_streams()
+
+            # Start data collection thread immediately
+            collect_thread = threading.Thread(target=self._collect_loop, daemon=True)
+            collect_thread.start()
+
+            # Wait for user settings and info before writing to CSV
+            self._wait_for_metadata()
             self._prepare_output()
-            while self.running:
-                # Pull markers
-                m_samples, m_ts = self.marker_inlet.pull_chunk(timeout=0.0, max_samples=10)
-                m_ts = [ts + self.marker_offset for ts in m_ts]
 
-                # Pull EEG
-                eeg_samples, eeg_ts = self.eeg_inlet.pull_chunk(
-                    timeout=0.0,
-                    max_samples=self.eeg_chunk_size
-                )
-                eeg_ts = [ts + self.eeg_offset for ts in eeg_ts]
-
-                # ── also stash these for plotting ──
-                with self._plot_buffer_lock:
-                    for sample, ts in zip(eeg_samples, eeg_ts):
-                        self._plot_buffer.append((ts, sample))
-
-                # buffer them
-                for (sample,), ts in zip(m_samples, m_ts):
-                    self._buffer.append((ts, 'Marker', sample))
-                for sample, ts in zip(eeg_samples, eeg_ts):
-                    self._buffer.append((ts, 'EEG', sample))
-
-                # flush when large enough
-                if len(self._buffer) >= self._buffer_size:
-                    self._flush_buffer()
-
-        finally:
-            # drain any leftovers, even if you Ctrl-C or an error is raised
+            # After metadata, flush any pre-buffered data
             if self._buffer:
                 self._flush_buffer()
+
+            # Keep running until stopped
+            while self.running:
+                time.sleep(0.1)
+
+            # Ensure collection thread exits
+            collect_thread.join()
+
+            # Flush remaining data
+            if self._buffer:
+                self._flush_buffer()
+        finally:
             self._cleanup()
 
     def stop(self):
@@ -182,7 +218,7 @@ class LSLDataRecorder:
         self.running = False
 
     def _flush_buffer(self):
-        # sort by timestamp then write
+        # Sort by timestamp then write to CSV
         self._buffer.sort(key=lambda e: e[0])
         for ts, kind, payload in self._buffer:
             if kind == 'Marker':
@@ -201,13 +237,14 @@ class LSLDataRecorder:
         self._buffer.clear()
 
     def get_eeg_buffer(self):
-        """Return all newly‐collected EEG samples as a list of (timestamp, sample),
-           then clear them from the internal buffer."""
+        """Return all newly-collected EEG samples for plotting."""
         with self._plot_buffer_lock:
             data = list(self._plot_buffer)
             self._plot_buffer.clear()
         return data
 
     def _cleanup(self):
-        self._csvfile.close()
-        print(f"\nDone — data saved to '{self.output_csv}'")
+        # Close CSV if open
+        if hasattr(self, '_csvfile'):
+            self._csvfile.close()
+            print(f"\nDone — data saved to '{self.output_csv}'")
