@@ -7,6 +7,7 @@ import sys
 import time
 from datetime import datetime
 from pylsl import StreamInlet, resolve_byprop
+import threading
 
 class LSLDataRecorder:
     """
@@ -33,6 +34,10 @@ class LSLDataRecorder:
         # for buffering & flushing
         self._buffer = []
         self._buffer_size = self.eeg_chunk_size * 10
+
+        # for real-time plotting
+        self._plot_buffer = []                # will hold (timestamp, sample) tuples
+        self._plot_buffer_lock = threading.Lock()
 
         self._setup_signal_handlers()
 
@@ -151,6 +156,11 @@ class LSLDataRecorder:
                 )
                 eeg_ts = [ts + self.eeg_offset for ts in eeg_ts]
 
+                # ── also stash these for plotting ──
+                with self._plot_buffer_lock:
+                    for sample, ts in zip(eeg_samples, eeg_ts):
+                        self._plot_buffer.append((ts, sample))
+
                 # buffer them
                 for (sample,), ts in zip(m_samples, m_ts):
                     self._buffer.append((ts, 'Marker', sample))
@@ -189,6 +199,14 @@ class LSLDataRecorder:
                 )
             self._writer.writerow(row)
         self._buffer.clear()
+
+    def get_eeg_buffer(self):
+        """Return all newly‐collected EEG samples as a list of (timestamp, sample),
+           then clear them from the internal buffer."""
+        with self._plot_buffer_lock:
+            data = list(self._plot_buffer)
+            self._plot_buffer.clear()
+        return data
 
     def _cleanup(self):
         self._csvfile.close()
