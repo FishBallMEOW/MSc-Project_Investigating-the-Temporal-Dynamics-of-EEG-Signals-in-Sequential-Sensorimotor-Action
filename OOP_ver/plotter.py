@@ -4,11 +4,12 @@ import numpy as np
 import scipy.signal as signal
 
 class EEGPlotter(QtWidgets.QMainWindow):
-    def __init__(self, recorder, num_channels=16, update_interval_ms=100, max_points=500):
+    def __init__(self, recorder, num_channels=16, update_interval_ms=100, max_points=500, threshold=100):
         super().__init__()
         self.recorder = recorder
         self.num_channels = num_channels
         self.max_points = max_points
+        self.threshold = threshold
         self.selected_channel = None
         self.show_fft = False
         self.filter_active = False
@@ -23,7 +24,7 @@ class EEGPlotter(QtWidgets.QMainWindow):
         self.fft_plots = {}
         self.fft_curves_individual = {}
 
-        # Initialize UI and start timer
+        # Initialize UI and status light, then start timer
         self.init_ui()
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update_plot)
@@ -58,6 +59,16 @@ class EEGPlotter(QtWidgets.QMainWindow):
         control_layout.addWidget(self.band_selector)
         control_layout.addWidget(self.notch_check)
         control_layout.addWidget(self.filter_btn)
+
+        # Status light indicator
+        self.status_light = QtWidgets.QFrame()
+        self.status_light.setFixedSize(20, 20)
+        self.status_light.setStyleSheet(
+            "border-radius: 10px; background-color: green;"
+        )
+        self.status_light.setToolTip("all channels are good")
+        control_layout.addWidget(self.status_light)
+
         layout.addLayout(control_layout)
 
         # Stacked plot area for time and FFT views
@@ -227,3 +238,22 @@ class EEGPlotter(QtWidgets.QMainWindow):
                     for curve in self.fft_curves.values():
                         curve.setData([], [])
                     self.fft_curves[self.selected_channel].setData(xf, np.abs(yf))
+
+        # Status light update based on latest sample values
+        bad_channels = []
+        for idx in range(self.num_channels):
+            if self.val_windows[idx]:
+                if abs(self.val_windows[idx][-1]) > self.threshold:
+                    bad_channels.append(f"ch{idx+1}")
+        if bad_channels:
+            self.status_light.setStyleSheet(
+                "border-radius: 10px; background-color: red;"
+            )
+            self.status_light.setToolTip(
+                ", ".join(bad_channels)
+            )
+        else:
+            self.status_light.setStyleSheet(
+                "border-radius: 10px; background-color: green;"
+            )
+            self.status_light.setToolTip("all channels are good")
