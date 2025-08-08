@@ -1,7 +1,30 @@
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 import pyqtgraph as pg
 import numpy as np
 import scipy.signal as signal
+
+class StatusLight(QtWidgets.QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(20, 20)
+        self.setAttribute(QtCore.Qt.WA_Hover)
+        self.setMouseTracking(True)
+        self._tooltip = ""
+
+    def setColor(self, color):
+        self.setStyleSheet(f"border-radius: 10px; background-color: {color};")
+
+    def setToolTip(self, text):
+        self._tooltip = text
+        super().setToolTip(text)
+
+    def enterEvent(self, event):
+        QtWidgets.QToolTip.showText(QtGui.QCursor.pos(), self._tooltip)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        QtWidgets.QToolTip.hideText()
+        super().leaveEvent(event)
 
 class EEGPlotter(QtWidgets.QMainWindow):
     def __init__(self, recorder, num_channels=16, update_interval_ms=100, max_points=500, threshold=100):
@@ -9,6 +32,7 @@ class EEGPlotter(QtWidgets.QMainWindow):
         self.recorder = recorder
         self.num_channels = num_channels
         self.max_points = max_points
+        # Threshold for abnormal EEG (absolute value)
         self.threshold = threshold
         self.selected_channel = None
         self.show_fft = False
@@ -61,12 +85,9 @@ class EEGPlotter(QtWidgets.QMainWindow):
         control_layout.addWidget(self.filter_btn)
 
         # Status light indicator
-        self.status_light = QtWidgets.QFrame()
-        self.status_light.setFixedSize(20, 20)
-        self.status_light.setStyleSheet(
-            "border-radius: 10px; background-color: green;"
-        )
-        self.status_light.setToolTip("all channels are good")
+        self.status_light = StatusLight()
+        self.status_light.setColor('green')
+        self.status_light.setToolTip('all channels are good')
         control_layout.addWidget(self.status_light)
 
         layout.addLayout(control_layout)
@@ -246,14 +267,10 @@ class EEGPlotter(QtWidgets.QMainWindow):
                 if abs(self.val_windows[idx][-1]) > self.threshold:
                     bad_channels.append(f"ch{idx+1}")
         if bad_channels:
-            self.status_light.setStyleSheet(
-                "border-radius: 10px; background-color: red;"
-            )
+            self.status_light.setColor('red')
             self.status_light.setToolTip(
                 ", ".join(bad_channels)
             )
         else:
-            self.status_light.setStyleSheet(
-                "border-radius: 10px; background-color: green;"
-            )
-            self.status_light.setToolTip("all channels are good")
+            self.status_light.setColor('green')
+            self.status_light.setToolTip('all channels are good')
