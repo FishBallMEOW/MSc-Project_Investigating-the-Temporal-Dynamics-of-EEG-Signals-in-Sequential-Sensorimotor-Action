@@ -27,13 +27,13 @@ class StatusLight(QtWidgets.QFrame):
         super().leaveEvent(event)
 
 class EEGPlotter(QtWidgets.QMainWindow):
-    def __init__(self, recorder, num_channels=16, update_interval_ms=100, max_points=500, threshold=100):
+    def __init__(self, recorder, num_channels=16, update_interval_ms=100, max_points=5000, threshold=100, drop_threshold=100_000_000_000):
         super().__init__()
         self.recorder = recorder
         self.num_channels = num_channels
         self.max_points = max_points
-        # Threshold for abnormal EEG (absolute value)
-        self.threshold = threshold
+        self.threshold = threshold  # Threshold for abnormal EEG to update status (absolute value)
+        self.drop_threshold = drop_threshold  # Threshold for dropping EEG data (absolute value)
         self.selected_channel = None
         self.show_fft = False
         self.filter_active = False
@@ -209,6 +209,9 @@ class EEGPlotter(QtWidgets.QMainWindow):
             return
         for ts, sample in data:
             for idx, value in enumerate(sample):
+                # Drop abnormal values before storing
+                if abs(value) > self.drop_threshold:
+                    continue  # skip this point entirely
                 self.ts_windows[idx].append(ts)
                 self.val_windows[idx].append(value)
                 if len(self.ts_windows[idx]) > self.max_points:
