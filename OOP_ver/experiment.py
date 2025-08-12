@@ -3,6 +3,8 @@ from psychopy import visual, core, event, sound, gui
 import random
 from pylsl import StreamInfo, StreamOutlet, local_clock
 import json
+import os
+from datetime import datetime
 
 # Back-fill the deprecated name for PsychoPy
 if not hasattr(np, 'alltrue'):
@@ -65,7 +67,7 @@ class MotorImageryExperiment:
             'baseline': 4.0,
             'cue':      1.0,
             'imagery':  10.0,
-            'iti':      6.0,
+            'iti':      4.0,
             'break':    60.0
         }
         self.num_blocks = 6
@@ -153,7 +155,9 @@ class MotorImageryExperiment:
             'Initials': '',
             'Age': '',
             'Gender': ['Male', 'Female', 'Other', 'Prefer not to say'],
-            'Vision': ['Normal', 'Corrected (glasses/contact lenses)', 'Impaired']
+            'Vision': ['Normal', 'Corrected (glasses/contact lenses)', 'Impaired'],
+            'Handedness': ['Left', 'Right', 'Ambidextrous'],
+            'Hearing': ['Normal', 'Corrected (hearing aids or cochlear implant)', 'Impaired']
         }
         dlg = gui.DlgFromDict(dictionary=user_config, title='Participant Info')
         if not dlg.OK:
@@ -167,19 +171,184 @@ class MotorImageryExperiment:
         self.userinfo_outlet.push_sample([user_info_json], local_clock())
 
     def _create_window(self):
+        from textwrap import dedent
+
+        def _fmt_secs(secs):
+            secs = int(round(float(secs)))
+            if secs < 60:
+                return f"{secs} s"
+            m, s = divmod(secs, 60)
+            return f"{m} min" if s == 0 else f"{m} min {s} s"
+
         self.win = visual.Window(fullscr=True, color='black', units='norm')
 
-        instr_text = (
-            "Welcome to the Motor Imagery Experiment.\n\n"
-            f"Sensory mode: {self.mode}   Class mode: {self.class_mode}\n\n"
-            "Press SPACE to begin, or ESC at any time to abort."
+        # ---- Build instruction pages based on current settings ----
+        header = f"Motor Imagery Task\nMode: {self.mode}    Classes: {self.class_mode}\n\nPlease read all instruction pages carefully before you begin.\n\n"
+        flow = (
+            "Trial flow: Fixate '+' (4 s) → cue (1 s) → IMAGINE (10 s) → rest (6 s).\n"
+            "Keep your eyes on '+'.\n\n"
         )
-        instr = visual.TextStim(self.win, text=instr_text, color='white', height=0.07)
-        instr.draw()
+
+        # Cues text (mode + class specific)
+        cues = ""
+        if self.class_mode.lower() == "2-class":
+            if self.mode.lower() == "visual":
+                cues = ("Visual cues:\n"
+                        "→ : imagine squeezing & releasing your RIGHT fist (no movement)\n"
+                        "← : imagine squeezing & releasing your LEFT fist\n")
+            elif self.mode.lower() == "auditory":
+                cues = ("Auditory cues:\n"
+                        "Low-pitch beep : RIGHT fist imagery\n"
+                        "High-pitch beep: LEFT fist imagery\n")
+            else:  # multisensory
+                cues = ("Multisensory (arrow + beep):\n"
+                        "→ / low-pitch = RIGHT   |   ← / high-pitch = LEFT\n")
+        else:  # 4-class
+            if self.mode.lower() == "visual":
+                cues = ("Visual cues:\n"
+                        "↑ : imagine pressing your TONGUE to the roof of your mouth, then relax\n"
+                        "↓ : imagine pressing BOTH FEET down, then relax\n"
+                        "→ : imagine squeezing & releasing your RIGHT fist\n"
+                        "← : imagine squeezing & releasing your LEFT fist\n")
+            elif self.mode.lower() == "auditory":
+                cues = ("Auditory cues (lowest → highest pitch):\n"
+                        "Lowest: TONGUE   |   Low: RIGHT hand   |   Medium: FEET   |   High: LEFT hand\n")
+            else:  # multisensory
+                cues = ("Multisensory (arrow + beep): they match.\n"
+                        "↑/lowest = TONGUE   ↓/medium = FEET   →/low = RIGHT   ←/high = LEFT\n")
+
+        # Blocks & breaks
+        trials_per_block = getattr(self, "trials_per_block", None)
+        num_blocks = getattr(self, "num_blocks", None)
+        break_secs = self.timings.get('break', 60)
+        block_info = (
+            f"Blocks & breaks:\n"
+            f"{num_blocks} blocks × {trials_per_block} trials.\n"
+            f"After each block: short break (~{_fmt_secs(break_secs)}).\n\n"
+        )
+
+        page1 = header + flow + cues + "\n" + block_info
+
+        reminders = dedent("""\
+            Reminders:
+            • Keep completely still — no actual muscle contractions.
+            • Minimise blinks/swallowing; if needed, do it during the REST period.
+            • Sit comfortably, relax jaw, breathe naturally.
+            • Focus on the FEELING of doing the action (kinesthetic imagery), not on seeing it.
+        """)
+        page2 = reminders
+
+        pages = [page1, page2]
+
+        # ---- Page display loop ----
+        page_idx = 0
+        footer_tmpl = "Page {}/{}    SPACE: begin    ←/→: navigate    ESC: abort"
+
+        while True:
+            text = pages[page_idx] + "\n\n" + footer_tmpl.format(page_idx + 1, len(pages))
+            instr = visual.TextStim(
+                self.win,
+                text=text,
+                color='white',
+                height=0.06,
+                wrapWidth=1.8,
+            )
+            instr.draw()
+            self.win.flip()
+
+            keys = event.waitKeys(keyList=['left', 'right', 'space', 'escape'])
+            if 'escape' in keys:
+                self._cleanup()
+                return
+            if 'left' in keys:
+                page_idx = (page_idx - 1) % len(pages)
+            elif 'right' in keys:
+                page_idx = (page_idx + 1) % len(pages)
+            elif 'space' in keys:
+                break
+
+    def _post_experiment_questionnaire(self):
+        """
+        Shows a 4-item Likert (1–4) questionnaire:
+        Concentration, Sleepiness, Fatigue, Difficulty.
+        Saves responses + basic metadata to a JSON file.
+        Returns the response dict (or None if aborted).
+        """
+        def ask_item(name, scale_text):
+            while True:
+                msg = (f"Post-task questionnaire\n\n{name}\n\n"
+                    f"Please rate using number keys 1–4:\n{scale_text}\n\n"
+                    "Press 1 / 2 / 3 / 4   |   ESC: abort")
+                visual.TextStim(self.win, text=msg, color='white',
+                                height=0.08, wrapWidth=1.8).draw()
+                self.win.flip()
+                keys = event.waitKeys(keyList=['1', '2', '3', '4', 'escape'])
+                if 'escape' in keys:
+                    self._cleanup()
+                    return None
+                choice = next(k for k in keys if k in ['1','2','3','4'])
+                return int(choice)
+
+        items = [
+            ("Concentration", "1 = very low      4 = very high"),
+            ("Sleepiness",    "1 = not sleepy     4 = very sleepy"),
+            ("Fatigue",       "1 = not tired      4 = very tired"),
+            ("Difficulty",    "1 = very easy      4 = very difficult"),
+        ]
+
+        responses = {}
+        for name, scale in items:
+            val = ask_item(name, scale)
+            if val is None:  # aborted
+                return None
+            responses[name.lower()] = val
+
+        # Summary/confirm page
+        summary_lines = [f"{k.capitalize()}: {v}" for k, v in responses.items()]
+        summary_txt = "Review your answers:\n\n" + "\n".join(summary_lines) + \
+                    "\n\nSPACE: save   BACKSPACE: redo   ESC: abort"
+        while True:
+            visual.TextStim(self.win, text=summary_txt, color='white',
+                            height=0.07, wrapWidth=1.8).draw()
+            self.win.flip()
+            keys = event.waitKeys(keyList=['space', 'backspace', 'escape'])
+            if 'escape' in keys:
+                self._cleanup()
+                return None
+            if 'backspace' in keys:
+                # redo all questions
+                return self._post_experiment_questionnaire()
+            if 'space' in keys:
+                break
+
+        # Build metadata
+        meta = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "mode": getattr(self, "mode", None),
+            "class_mode": getattr(self, "class_mode", None),
+            "num_blocks": getattr(self, "num_blocks", None),
+            "trials_per_block": getattr(self, "trials_per_block", None),
+            "break_seconds": (self.timings.get('break') if hasattr(self, "timings") else None),
+            "participant": getattr(self, "participant_info", None),  # if you stored it earlier
+        }
+
+        out = {"questionnaire": responses, "meta": meta}
+
+        # Decide filename/location
+        fname = datetime.now().strftime("%Y%m%d_%H%M%S") + "_post_questionnaire.json"
+        out_dir = getattr(self, "output_dir", None)
+        path = os.path.join(out_dir, fname) if (out_dir and os.path.isdir(out_dir)) else fname
+
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(out, f, ensure_ascii=False, indent=2)
+
+        # Final confirmation
+        visual.TextStim(self.win,
+                        text=f"Thank you!\n\nYour responses were saved to:\n{path}\n\nPress SPACE to finish.",
+                        color='white', height=0.07, wrapWidth=1.8).draw()
         self.win.flip()
-        keys = event.waitKeys(keyList=['space', 'escape'])
-        if 'escape' in keys:
-            self._cleanup()
+        event.waitKeys(keyList=['space'])
+        return responses
 
     def _create_stimuli(self):
         self.fixation = visual.TextStim(self.win, text='+', height=0.5, color='white')
@@ -209,7 +378,7 @@ class MotorImageryExperiment:
             self._run_block(trials)
             if block < self.num_blocks - 1:
                 self._take_break()
-
+        self._post_experiment_questionnaire()
         self._finish()
 
     def _run_block(self, trials):
