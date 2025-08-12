@@ -130,7 +130,8 @@ class LSLDataRecorder:
         # 1) create file & writer
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_csv = f"{now}_eeg_with_markers.csv"
-        self._csvfile = open(self.output_csv, 'w', newline='')
+        # 'x' -> fail if file exists; pick a unique name, and write UTF-8
+        self._csvfile = open(self.output_csv, 'x', newline='', encoding='utf-8')
         self._writer = csv.writer(self._csvfile)
 
         # 2) header: add two new columns for settings & info
@@ -221,6 +222,7 @@ class LSLDataRecorder:
         # Sort by timestamp then write to CSV
         self._buffer.sort(key=lambda e: e[0])
         for ts, kind, payload in self._buffer:
+            ts = float(ts)  # guarantees numeric
             if kind == 'Marker':
                 row = (
                     [f"{ts:.6f}", 'Marker']
