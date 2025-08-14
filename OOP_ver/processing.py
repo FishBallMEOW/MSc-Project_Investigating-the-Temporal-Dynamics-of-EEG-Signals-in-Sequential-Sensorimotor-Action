@@ -93,7 +93,7 @@ class Config:
 
     # Time-frequency
     freqs: np.ndarray = None           # will default to np.arange(8, 31)
-    n_cycles: float = 5.0              # Morlet cycles
+    n_cycles: float = 7.0              # Morlet cycles
     ers_baseline_mode: str = 'percent' # 'percent' gives % change
 
     # ERD metrics
@@ -139,9 +139,13 @@ def _to_volts(arr: np.ndarray, unit: str) -> np.ndarray:
         raise ValueError(f"Unknown voltage unit: {unit}")
 
 
-def _pick_existing(raw: mne.io.BaseRaw, names: List[str]) -> List[str]:
-    return [ch for ch in names if ch in raw.ch_names]
-
+def _pick_existing(obj, names):
+    ch_names = getattr(obj, "ch_names", None)
+    if ch_names is None:
+        raise TypeError(f"{type(obj).__name__} has no 'ch_names'")
+    wanted = set(names or [])
+    have   = set(ch_names)
+    return [ch for ch in names if ch in have]  # preserves input order
 
 # LOADERS
 def load_from_eegbci(cfg: Config) -> Tuple[mne.io.BaseRaw, np.ndarray, Dict[str, int]]:
@@ -301,10 +305,11 @@ def compute_tfr(epochs: mne.Epochs, cfg: Config) -> mne.time_frequency.AverageTF
     print("Computing Morlet time–frequency power…")
     power = mne.time_frequency.tfr_morlet(
         epochs, freqs=cfg.freqs, n_cycles=cfg.n_cycles, use_fft=True,
-        return_itc=False, average=True, decim=1, n_jobs=None
+        return_itc=False, average=False, decim=1, n_jobs=None
     )
     # Baseline as % change
     power.apply_baseline(cfg.baseline, mode=cfg.ers_baseline_mode)
+    power = power.average()
     return power
 
 
@@ -328,7 +333,7 @@ def extract_erd_metrics(epochs: mne.Epochs, power: mne.time_frequency.AverageTFR
     st_power.apply_baseline(cfg.baseline, mode=cfg.ers_baseline_mode)
 
     # Select channels
-    chs = _pick_existing(epochs._raw, cfg.sensorimotor_chs)
+    chs = _pick_existing(epochs, cfg.sensorimotor_chs)
     if not chs:
         chs = epochs.ch_names  # fallback
     ch_idx = [epochs.ch_names.index(c) for c in chs]
@@ -411,6 +416,112 @@ def run_decoding(epochs: mne.Epochs, cfg: Config) -> pd.DataFrame:
 
 
 # PLOTTING HELPERS
+def plot_eeg_time_series(raw: mne.io.BaseRaw, raw_filt: mne.io.BaseRaw, cfg: Config, 
+                         channels: Optional[List[str]] = None, tmin: Optional[float] = None,
+                         tmax: Optional[float] = None, fname: Optional[str] = None, max_channels: int = 8):
+    """
+    Plot raw vs. filtered EEG time series on the same axes for quick comparison.
+
+    Parameters
+    ----------
+    raw : mne.io.BaseRaw
+        Unfiltered (or less-processed) Raw.
+    raw_filt : mne.io.BaseRaw
+        Preprocessed/filtered Raw (ideally created by preprocess_raw).
+    cfg : Config
+        Global config (used for default channels and output dir).
+    channels : list of str | None
+        Channel names to plot. If None, tries cfg.sensorimotor_chs, otherwise
+        falls back to the first `max_channels` EEG channels present in both raws.
+    tmin, tmax : float | None
+        Time window in seconds relative to the start of the recording.
+        If None, defaults to the first 5 seconds available.
+    fname : str | None
+        Path to save the PNG. If None, saves to cfg.out_dir / 'eeg_timeseries_raw_vs_filtered.png'.
+    max_channels : int
+        Maximum number of channels to show to keep the plot readable.
+    """
+
+    # Work on copies so we can crop / resample safely
+    r0 = raw.copy()
+    r1 = raw_filt.copy()
+
+    # Ensure sampling rates match (resample the "raw" to the filtered's sfreq if needed)
+    sf0 = r0.info["sfreq"]
+    sf1 = r1.info["sfreq"]
+    if abs(sf0 - sf1) > 1e-6:
+        r0.resample(sf1)
+
+    # Determine channels present in both
+    eeg_chs0 = [ch for ch, t in zip(r0.ch_names, mne.pick_types(r0.info, eeg=True, exclude="bads")) if ch in r0.ch_names]
+    eeg_chs1 = [ch for ch, t in zip(r1.ch_names, mne.pick_types(r1.info, eeg=True, exclude="bads")) if ch in r1.ch_names]
+    common = [ch for ch in (channels or cfg.sensorimotor_chs or r1.ch_names) if ch in r0.ch_names and ch in r1.ch_names]
+
+    if not common:
+        # fallback: use intersection of EEG channel lists
+        common = [ch for ch in r1.ch_names if ch in r0.ch_names]
+        # limit to max_channels
+        common = common[:max_channels]
+    else:
+        common = common[:max_channels]
+
+    if len(common) == 0:
+        raise RuntimeError("No overlapping EEG channels found between raw and raw_filt.")
+
+    # Decide the plotting window
+    # Default to first 5 seconds within the available data
+    if tmin is None and tmax is None:
+        tmin = 0.0
+        tmax = min(5.0, r0.times[-1], r1.times[-1])
+    elif tmin is None:
+        tmin = 0.0
+    elif tmax is None:
+        # show 5 seconds from tmin
+        tmax = min(tmin + 5.0, r0.times[-1], r1.times[-1])
+
+    # Crop both to the same window
+    r0.crop(tmin=max(0.0, tmin), tmax=min(tmax, r0.times[-1]))
+    r1.crop(tmin=max(0.0, tmin), tmax=min(tmax, r1.times[-1]))
+
+    # Extract data aligned in time
+    picks = mne.pick_channels(r1.ch_names, include=common)
+    data_f = r1.get_data(picks=picks)  # (n_ch, n_times)
+    # Make sure we pick the same channels/order from r0
+    picks0 = mne.pick_channels(r0.ch_names, include=[r1.ch_names[i] for i in picks])
+    data_r = r0.get_data(picks=picks0)
+
+    # Convert to microvolts for readability
+    data_f_uv = data_f * 1e6
+    data_r_uv = data_r * 1e6
+
+    times = r1.times  # already cropped
+
+    # Plot
+    n_ch = len(common)
+    fig, axes = plt.subplots(n_ch, 1, figsize=(10, max(3, n_ch*1.4)), sharex=True)
+    if n_ch == 1:
+        axes = [axes]
+
+    for ax, ch_name, y_r, y_f in zip(axes, common, data_r_uv, data_f_uv):
+        ax.plot(times, y_r, label="Raw", alpha=0.6, linewidth=0.8)
+        ax.plot(times, y_f, label="Filtered", linewidth=1.0)
+        ax.set_ylabel(f"{ch_name}\n(µV)")
+        ax.grid(True, linestyle="--", alpha=0.3)
+
+    axes[0].legend(loc="upper right", frameon=False)
+    axes[-1].set_xlabel("Time (s)")
+    fig.suptitle(f"EEG time series (raw vs filtered)  •  {n_ch} ch  •  {tmin:.2f}–{tmax:.2f} s", y=0.995)
+    fig.tight_layout()
+
+    # Save
+    out_dir = Path(cfg.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if fname is None:
+        fname = str(out_dir / "eeg_timeseries_raw_vs_filtered.png")
+    fig.savefig(fname, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved time-series comparison plot → {fname}")
+
 def plot_tfr(power: mne.time_frequency.AverageTFR, cfg: Config, fname: str):
     """Save TFR plots. mne.AverageTFR.plot returns a Figure *or* a list of Figures
     when multiple channels are picked. Handle both cases and save one PNG per channel
@@ -512,12 +623,12 @@ def plot_erd_summary(df: pd.DataFrame, fname: str):
 # Main Pipeline
 #%% CONFIG
 # A) EEGBCI MI left-vs-right for subject 1, runs 4/8/12
-# CFG = Config(source='eegbci', eegbci_subject=1, eegbci_runs=[4,8,12])
+CFG = Config(source='eegbci', eegbci_subject=5, eegbci_runs=[4,8,12]) # [4,8,12])
 
 # B) Your CSV (adjust csv_event_code_map if needed)
-CFG = Config(source='csv', csv_path='D:/user/Files_without_backup/MSc_Project/20250811_093558_eeg_with_markers.csv', #"D:/user/Files_without_backup/MSc_Project/20250808_093023_eeg_with_markers.csv", 
-                csv_event_code_map={21:'left', 22:'right'},
-                channel_cols=[f'ch{i}' for i in range(1,17)], csv_voltage_unit='uV')
+# CFG = Config(source='csv', csv_path='D:/user/Files_without_backup/MSc_Project/20250813_142853_eeg_with_markers.csv',  
+#                 csv_event_code_map={21:'left', 22:'right'},
+#                 channel_cols=[f'ch{i}' for i in range(1,17)], csv_voltage_unit='uV', baseline=(-4, 0), tmin=-4, tmax=10)
 #%% Load
 if CFG.source.lower() == 'eegbci':
     raw, events, event_id = load_from_eegbci(CFG)
@@ -526,6 +637,43 @@ elif CFG.source.lower() == 'csv':
 else:
     raise ValueError("Config.source must be 'eegbci' or 'csv'")
 
-# print(f"events: {events}, {raw.n_times} samples")
+print(events, "events loaded:", len(events), "event_id:", event_id)
 # print(raw.get_data())
 
+#%% Preprocess
+raw_prep = preprocess_raw(raw, CFG)
+
+# plot for checking
+plot_eeg_time_series(raw, raw_prep, CFG)
+
+#%% Epochs
+epochs = make_epochs(raw_prep, events, event_id, CFG)
+
+# Persist a copy of epochs metadata
+meta_path = Path(CFG.out_dir) / 'epochs_metadata.json'
+with open(meta_path, 'w') as f:
+    json.dump({
+        'n_epochs': int(len(epochs)),
+        'event_id': event_id,
+        'tmin': CFG.tmin,
+        'tmax': CFG.tmax,
+        'baseline': CFG.baseline,
+        'sfreq': float(epochs.info['sfreq']),
+        'ch_names': epochs.ch_names
+    }, f, indent=2)
+print(f"Saved epochs metadata → {meta_path}")
+
+#%% TFR & ERD metrics
+power = compute_tfr(epochs, CFG)
+power_fig = Path(CFG.out_dir) / 'tfr_sensorimotor.png'
+plot_tfr(power, CFG, str(power_fig))
+print(f"Saved TFR plot → {power_fig}")
+
+erd_df = extract_erd_metrics(epochs, power, CFG)
+erd_csv = Path(CFG.out_dir) / 'erd_metrics.csv'
+erd_df.to_csv(erd_csv, index=False)
+print(f"Saved ERD metrics → {erd_csv}")
+
+erd_fig = Path(CFG.out_dir) / 'erd_summary.png'
+plot_erd_summary(erd_df, str(erd_fig))
+print(f"Saved ERD summary plot → {erd_fig}")
