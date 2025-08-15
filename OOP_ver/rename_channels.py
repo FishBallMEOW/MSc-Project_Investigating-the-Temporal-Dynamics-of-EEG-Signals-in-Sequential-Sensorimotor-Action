@@ -33,8 +33,19 @@ NOTES
 - Excel writing requires `openpyxl` to be installed.
 """
 
-#python rename_channels.py /path/to/20250815_144519_eeg_with_markers.csv --suffix _renamed
-#D:/user/Files_without_backup/MSc_Project/20250815_144519_eeg_with_markers.csv --suffix _renamed
+'''
+Rename your uploaded CSV in place:
+python rename_channels.py /path/to/20250815_144519_eeg_with_markers.csv --inplace
+
+Save to a new file with a suffix:
+python rename_channels.py /path/to/20250815_144519_eeg_with_markers.csv --suffix _renamed
+
+Override a few labels on the fly:
+python rename_channels.py data/*.csv --map ch1=Fz ch4=Cz --inplace
+
+Use a JSON mapping file (keys like "ch1": "Fz"):
+python rename_channels.py data --recursive --mapping-file mapping.json --inplace
+'''
 
 from __future__ import annotations
 
