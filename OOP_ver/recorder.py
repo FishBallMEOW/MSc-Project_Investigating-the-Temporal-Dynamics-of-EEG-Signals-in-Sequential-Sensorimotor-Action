@@ -7,6 +7,7 @@ import sys
 import time
 from datetime import datetime
 from pylsl import StreamInlet, resolve_byprop
+from pathlib import Path
 import threading
 
 class LSLDataRecorder:
@@ -124,12 +125,13 @@ class LSLDataRecorder:
         self.ui_ts = ui_ts
         print(f"UserInfo received at {ui_ts:.6f}: {self.userinfo_json}")
 
-        self.metadata_received = True
 
     def _prepare_output(self):
         # 1) create file & writer
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.output_csv = f"{now}_eeg_with_markers.csv"
+        folder = Path("Data") / now
+        folder.mkdir(parents=True, exist_ok=True)
+        self.output_csv = f"Data/{now}/{now}_eeg_with_markers.csv"
         # 'x' -> fail if file exists; pick a unique name, and write UTF-8
         self._csvfile = open(self.output_csv, 'x', newline='', encoding='utf-8')
         self._writer = csv.writer(self._csvfile)
@@ -196,7 +198,8 @@ class LSLDataRecorder:
             # Wait for user settings and info before writing to CSV
             self._wait_for_metadata()
             self._prepare_output()
-
+            self.metadata_received = True
+            
             # After metadata, flush any pre-buffered data
             if self._buffer:
                 self._flush_buffer()
