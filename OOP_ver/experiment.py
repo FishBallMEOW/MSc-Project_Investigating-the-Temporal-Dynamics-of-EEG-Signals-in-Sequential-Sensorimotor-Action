@@ -373,7 +373,6 @@ class MotorImageryExperiment:
     def run(self):
         for block in range(self.num_blocks):
             trials = self.classes * (self.trials_per_block // len(self.classes))
-            print(trials)
             random.shuffle(trials)
             self._run_block(trials)
             if block < self.num_blocks - 1:
