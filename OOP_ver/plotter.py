@@ -27,7 +27,7 @@ class StatusLight(QtWidgets.QFrame):
         super().leaveEvent(event)
 
 class EEGPlotter(QtWidgets.QMainWindow):
-    def __init__(self, recorder, num_channels=16, update_interval_ms=100, max_points=5000, threshold=100, drop_threshold=100_000_000_000):
+    def __init__(self, recorder, num_channels=16, update_interval_ms=100, max_points=5000, threshold=1000, drop_threshold=100_000_000_000):
         super().__init__()
         self.recorder = recorder
         self.num_channels = num_channels
@@ -70,7 +70,7 @@ class EEGPlotter(QtWidgets.QMainWindow):
         self.fft_btn = QtWidgets.QPushButton("Show FFT")
         # Filter controls
         self.band_selector = QtWidgets.QComboBox()
-        self.band_selector.addItems(["None", "Theta (4-8 Hz)", "Alpha (8-12 Hz)", "Beta (12-30 Hz)", "Gamma (30-100 Hz)"])
+        self.band_selector.addItems(["None", "Theta (4-8 Hz)", "Alpha (8-12 Hz)", "Beta (12-30 Hz)", "Gamma (30-100 Hz)", "Testing (0.5-100 Hz)"])
         self.notch_check = QtWidgets.QCheckBox("Notch 50 Hz")
         self.filter_btn = QtWidgets.QPushButton("Apply Filter")
 
@@ -185,6 +185,8 @@ class EEGPlotter(QtWidgets.QMainWindow):
             self.filter_band = (12, 30)
         elif text.startswith("Gamma"):
             self.filter_band = (30, 100)
+        elif text.startswith("Testing"):
+            self.filter_band = (0.5, 100)
         else:
             self.filter_band = None
         self.notch = self.notch_check.isChecked()
