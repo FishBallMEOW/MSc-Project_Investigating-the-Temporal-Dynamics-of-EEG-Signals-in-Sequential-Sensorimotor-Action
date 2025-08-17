@@ -531,5 +531,5 @@ def main():
 
 
 if __name__ == "__main__":
-    default_csv = "/mnt/data/20250816_172416_eeg_with_markers_renamed.csv"
+    default_csv = "D:/user/Files_without_backup/MSc_Project/Data/20250816_172416_2blocks/20250816_172416_eeg_with_markers_renamed.csv"
     main()
