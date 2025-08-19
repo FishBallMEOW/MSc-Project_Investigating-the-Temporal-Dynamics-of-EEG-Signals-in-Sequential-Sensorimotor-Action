@@ -71,7 +71,7 @@ class MotorImageryExperiment:
             'break':    60.0
         }
         self.num_blocks = 6
-        self.trials_per_block = 20
+        self.trials_per_block = 10
 
         # Stimulus properties
         self.frequencies = {
