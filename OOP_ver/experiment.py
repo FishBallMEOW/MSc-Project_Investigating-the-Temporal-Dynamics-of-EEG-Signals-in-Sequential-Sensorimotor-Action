@@ -66,7 +66,7 @@ class MotorImageryExperiment:
         self.timings = {
             'baseline': 4.0,
             'cue':      1.0,
-            'imagery':  10.0,
+            'imagery':  8.0,
             'iti':      4.0,
             'break':    60.0
         }
