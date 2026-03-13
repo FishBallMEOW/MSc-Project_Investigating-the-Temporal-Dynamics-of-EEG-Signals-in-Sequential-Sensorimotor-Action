@@ -68,17 +68,17 @@ Before making any change, the agent must do the following in order.
 Read, if present:
 - `README.md`
 - `docs/index.md`
-- `docs/project/vision.md`
-- `docs/project/prd.md` or equivalent product doc
-- `docs/architecture/README.md`
+- `docs/repo_manage/project/vision.md`
+- `docs/repo_manage/project/prd.md` or equivalent product doc
+- `docs/repo_manage/architecture/README.md`
 - `docs/decisions/`
-- `docs/status/current.md`
-- `docs/handoffs/latest.md`
+- `docs/repo_manage/status/current.md`
+- `docs/repo_manage/handoffs/latest.md`
 
 ### Step 2 — Read active execution context
 Read, if present:
-- `docs/plans/`
-- `docs/tasks/active/`
+- `docs/repo_manage/plans/`
+- `docs/repo_manage/tasks/active/`
 - `docs/worklog/`
 - issue tracker references
 - recent ADRs or design notes related to the target area
@@ -94,7 +94,7 @@ If conflict risk exists, narrow scope or update the task note before proceeding.
 
 ### Step 4 — Write or update a task plan
 For every non-trivial task, create or update a plan document in:
-- `docs/plans/YYYY-MM-DD-task-slug.md`
+- `docs/repo_manage/plans/YYYY-MM-DD-task-slug.md`
 
 Each plan should include:
 - task summary
@@ -109,7 +109,7 @@ Each plan should include:
 
 ### Step 5 — Announce the work area
 Update or create a task note in:
-- `docs/tasks/active/<task-slug>.md`
+- `docs/repo_manage/tasks/active/<task-slug>.md`
 
 Include:
 - owner / agent name
@@ -127,14 +127,14 @@ Every project using this guide should aim to keep these documentation locations 
 
 ### Core docs
 - `docs/index.md` — documentation map
-- `docs/project/` — vision, PRD, glossary, scope
-- `docs/architecture/` — repo architecture, system design, module boundaries
+- `docs/repo_manage/project/` — vision, PRD, glossary, scope
+- `docs/repo_manage/architecture/` — repo architecture, system design, module boundaries
 - `docs/decisions/` — ADRs and decision logs
-- `docs/plans/` — forward-looking implementation plans
-- `docs/tasks/active/` — active tasks and ownership
-- `docs/tasks/archive/` — completed tasks
-- `docs/status/` — current project status and milestones
-- `docs/handoffs/` — latest summaries for the next agent
+- `docs/repo_manage/plans/` — forward-looking implementation plans
+- `docs/repo_manage/tasks/active/` — active tasks and ownership
+- `docs/repo_manage/tasks/archive/` — completed tasks
+- `docs/repo_manage/status/` — current project status and milestones
+- `docs/repo_manage/handoffs/` — latest summaries for the next agent
 - `docs/runbooks/` — operational procedures
 - `docs/experiments/` — experiment protocols and results summaries
 - `docs/specs/` — schema and interface docs
@@ -196,8 +196,8 @@ Use different documents for different kinds of truth:
 
 ### 6.2 Required documentation updates after non-trivial work
 Update at least one of:
-- `docs/handoffs/latest.md`
-- `docs/status/current.md`
+- `docs/repo_manage/handoffs/latest.md`
+- `docs/repo_manage/status/current.md`
 - related ADR
 - module README
 - task note
@@ -325,7 +325,7 @@ Failures are project data. Keep them unless there is a privacy or cost reason no
 When multiple agents work in the same repo, use these controls.
 
 ### 11.1 Active task files
-Each active task should have a note in `docs/tasks/active/` with:
+Each active task should have a note in `docs/repo_manage/tasks/active/` with:
 - owner
 - scope
 - touched areas
@@ -354,8 +354,8 @@ Before creating a new plan, search whether the task already has one.
 A handoff must let a new agent continue without rereading the entire repo.
 
 ### Handoff location
-- `docs/handoffs/YYYY-MM-DD-HHMM-<slug>.md`
-- optionally update `docs/handoffs/latest.md` to point to the newest one
+- `docs/repo_manage/handoffs/YYYY-MM-DD-HHMM-<slug>.md`
+- optionally update `docs/repo_manage/handoffs/latest.md` to point to the newest one
 
 ### Handoff template
 ```md
@@ -382,7 +382,7 @@ The next agent should be able to answer all three:
 
 ## 13. Project Status Tracking
 Maintain a concise current status file:
-- `docs/status/current.md`
+- `docs/repo_manage/status/current.md`
 
 It should contain:
 - project phase
@@ -474,8 +474,8 @@ This keeps the file reusable while still actionable in a concrete repo.
 ```md
 ## Project Addendum
 - Product: Multimodal Evaluation Lab
-- Primary docs: docs/project/prd.md, docs/architecture/repo-architecture.md
-- Current status: docs/status/current.md
+- Primary docs: docs/repo_manage/project/prd.md, docs/repo_manage/architecture/repo-architecture.md
+- Current status: docs/repo_manage/status/current.md
 - Local stack: uv + python, pnpm + web, docker compose for services
 - Critical modules: packages/specs, packages/compat, services/run-service, apps/web
 - Sensitive areas: dataset connectors, sandbox execution, evaluator versioning
@@ -487,3 +487,4 @@ This keeps the file reusable while still actionable in a concrete repo.
 When in doubt, optimize for **clarity, continuity, and verifiable progress**.
 
 A strong agent does not just finish its own task. It makes the next correct task easier.
+

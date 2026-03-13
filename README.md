@@ -7,6 +7,7 @@ The repository root is the umbrella project. Active code now lives under `src/`,
 ## Start Here
 
 - Documentation entrypoint: `docs/index.md`
+- Repository-management docs: `docs/repo_manage/index.md`
 - Active analysis code: `src/pipelines/`
 - Active collection utilities: `src/data_collection/`
 - Main notebook: `notebooks/main/eeg_analysis_main.ipynb`
@@ -24,7 +25,10 @@ The repository root is the umbrella project. Active code now lives under `src/`,
 - `notebooks/archive/`: historical notebook variants kept for provenance
 - `archive/`: legacy source files, MATLAB helpers, reports, and pipeline backups
 - `artifacts/`: generated outputs, result tables, and plots kept outside active source
-- `docs/`: plans, status, architecture notes, and handoffs
+- `docs/repo_manage/`: repo-management docs including plans, status, architecture notes, and handoffs
+- `docs/report/`: thesis, abstract, and report PDFs
+- `docs/presentation/`: progress and final presentation slide decks
+- `docs/figures/`: figure assets and exported reference visuals
 
 ## Current Organization Policy
 
