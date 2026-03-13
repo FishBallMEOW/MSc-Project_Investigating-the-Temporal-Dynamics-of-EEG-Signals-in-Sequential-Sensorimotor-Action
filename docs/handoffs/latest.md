@@ -1,5 +1,5 @@
 # Latest Handoff
 
-Current handoff: `docs/handoffs/2026-03-13-data-phase-2-reorg.md`
+Current handoff: planning state captured by `docs/plans/2026-03-13-phase-3-structure-reorg.md`
 
-This handoff captures the executed data reorganization, including the `data/_archive/` move and the Git tracking boundary between active `NIC2` data and archived local datasets.
+The latest planning state captures the agreed phase-3 structure decisions: dissolve `OOP_ver/`, move active code under `src/`, keep one main notebook under `notebooks/main/`, and archive the remaining legacy and MATLAB material.

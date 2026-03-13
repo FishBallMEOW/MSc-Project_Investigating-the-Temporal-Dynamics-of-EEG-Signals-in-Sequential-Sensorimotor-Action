@@ -18,13 +18,14 @@ Post-submission archival cleanup and organization.
 - `light-reorg-baseline`: documentation-first repo mapping and cleanup inventory.
 - `data-and-code-reorg-plan`: implementation-ready plan for data archiving and source layout cleanup.
 - `data-phase-2-reorg`: completed local data reorganization so only `data/NIC2/` remains active.
+- `phase-3-structure-reorg`: planned source-layout reorganization that dissolves `OOP_ver/` into `src/`, `notebooks/`, `archive/`, and `artifacts/`.
 
 ## Blockers
 
-- Canonical analysis entrypoints are not yet formally selected.
-- Duplicate notebooks and prototype scripts have not yet been compared in detail.
+- Phase-3 file moves have not yet been executed, so `OOP_ver/` still remains the physical workspace.
+- Duplicate notebooks and prototype scripts have not yet been moved into their archive destinations.
 - Large result files and cache artifacts still need a tracking/ignore policy.
-- The active code layout still needs a later reorganization pass.
+- Some review-needed pipeline variants still need a later keep-versus-archive decision after the structural move.
 
 ## Major Risks
 
@@ -35,12 +36,15 @@ Post-submission archival cleanup and organization.
 ## Recent Decisions
 
 - Keep the repository root as the umbrella project.
-- Treat `OOP_ver/` as the primary workspace for future orientation.
+- Dissolve `OOP_ver/` during the next structure pass rather than keeping it as the long-term workspace.
 - Use documentation and classification before any cleanup or movement.
 - Preserve commit `c5ce4f3` as the baseline safety snapshot for later pruning.
 - Use repo-local `data/` paths instead of the old external `D:/.../MSc_Project/Data/` directory.
 - Keep `data/NIC2/` active and move other local datasets under `data/_archive/`.
+- Use `src/pipelines/` and `src/data_collection/` as the active Python source layout.
+- Keep one active notebook as `notebooks/main/eeg_analysis_main.ipynb` and archive the rest.
+- Treat root prototypes, unrelated games, and MATLAB files as archive-by-default.
 
 ## Next Milestone
 
-Implement the remaining root and `OOP_ver/` codebase reorganization so active code, notebooks, archives, and generated outputs have separate homes.
+Execute the phase-3 structure reorganization so active code, notebooks, archives, and generated outputs have separate homes and `OOP_ver/` is removed from the active layout.
