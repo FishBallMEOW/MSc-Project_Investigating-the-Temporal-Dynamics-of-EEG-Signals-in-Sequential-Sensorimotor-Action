@@ -1,5 +1,5 @@
 # Latest Handoff
 
-Current handoff: `docs/handoffs/2026-03-13-light-reorg-baseline.md`
+Current handoff: `docs/handoffs/2026-03-13-data-phase-2-reorg.md`
 
-This handoff captures the initial documentation-first organization pass, including the repo map, status summary, and cleanup inventory for duplicate and historical files.
+This handoff captures the executed data reorganization, including the `data/_archive/` move and the Git tracking boundary between active `NIC2` data and archived local datasets.

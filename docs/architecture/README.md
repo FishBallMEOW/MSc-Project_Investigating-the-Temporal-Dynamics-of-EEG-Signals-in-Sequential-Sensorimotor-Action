@@ -22,8 +22,7 @@ The purpose of this document is to describe the current layout without implying 
 - `AGENTS.md`: repository operating instructions.
 - `data/`: local dataset area moved into the repository after the original work was created.
 - `data/NIC2/`: primary active dataset area for current work.
-- `data/Data_from_dataset/`: sample EDF/event files retained locally inside the repo workspace.
-- remaining subfolders in `data/`: archival or exploratory datasets to be sorted in a later cleanup pass.
+- `data/_archive/`: archived local datasets, dataset copies, reports, and exploratory data not part of the active workflow.
 - `OOP_ver/`: primary analysis workspace.
 - `outputs/`: generated output from root-level experiments.
 - `__pycache__/`: generated cache artifacts.
@@ -47,6 +46,7 @@ The purpose of this document is to describe the current layout without implying 
 
 - `OOP_ver/` should be the default place to look first when reconstructing the analysis workflow.
 - Repo-local data should be referenced through `data/` paths rather than the old external `D:/.../MSc_Project/Data/` directory.
-- `data/NIC2/` is the default active data source; other `data/` subfolders should be treated as local archive candidates until reviewed.
+- `data/NIC2/` is the default active data source.
+- `data/_archive/` contains the non-active local data that remains available for provenance and occasional reference.
 - Root-level scripts should not be deleted or promoted yet; they need later comparison against the `OOP_ver/` workflow.
 - Any future cleanup should use the labels above consistently so that archive, generated, and active-candidate files are not mixed.

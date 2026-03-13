@@ -49,8 +49,8 @@ This document records duplicate, historical, and generated material that should 
 ### Local Data Area
 
 - `data/NIC2/`: active local dataset area for current work
-- `data/Data_from_dataset/`: retained sample EDF/event dataset copy
-- other folders under `data/`: `Archive-historical` candidates until a later review decides what should remain nearby, move elsewhere, or be documented separately
+- `data/_archive/Data_from_dataset/`: retained sample EDF/event dataset copy
+- all non-`NIC2` folders under `data/_archive/`: `Archive-historical`
 
 ## Later Cleanup Actions
 
@@ -58,6 +58,6 @@ The next cleanup pass should:
 
 - compare notebook families to identify the latest meaningful working versions,
 - determine whether any root-level scripts duplicate `OOP_ver/` behavior,
-- consolidate data-path assumptions around `data/NIC2/` and a documented archival policy for the rest of `data/`,
+- consolidate data-path assumptions around `data/NIC2/` and keep non-active local data under `data/_archive/`,
 - define a policy for large result files and caches,
 - move only after a canonical file list has been agreed.
