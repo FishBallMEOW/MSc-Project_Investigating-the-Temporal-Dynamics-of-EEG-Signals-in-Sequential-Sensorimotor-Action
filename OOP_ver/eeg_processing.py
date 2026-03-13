@@ -43,7 +43,7 @@ if source.lower() == "eegbci":
 elif source.lower() == "csv":
     # CSV settings (used if source == "ecog_mat")
     # 20250818_121855_1block/20250818_121855_eeg_with_markers_renamed.csv  Simulated_data/simulated_eeg_with_markers_10Hz_ERD_5s.csv
-    csv_path = str(DATA_DIR / "Simulated_data" / "simulated_eeg_with_markers_10Hz_ERS_5s.csv")   # <- change me
+    csv_path = str(DATA_DIR / "_archive" / "Simulated_data" / "simulated_eeg_with_markers_10Hz_ERS_5s.csv")   # <- change me
     time_col = "timestamp"
     type_col = "type"          # values: "EEG" or "Marker"
     eeg_value = "EEG"
@@ -54,7 +54,7 @@ elif source.lower() == "csv":
     csv_voltage_unit = "uV"    # "uV" | "mV" | "V"
 elif source.lower() == "ecog_mat":
     # ECoG (.mat) settings (used if source == "ecog_mat")
-    ecog_mat_path = str(DATA_DIR / "data_miller" / "bp_im_t_h.mat")  # <- change me
+    ecog_mat_path = str(DATA_DIR / "_archive" / "data_miller" / "bp_im_t_h.mat")  # <- change me
     ecog_event_id = {'tongue': 11, 'hand': 12}      # default codes in the dataset
     ecog_sfreq = 1000.0
     ecog_scale_uv = 0.0298   # μV per amplifier unit (per README)
@@ -358,7 +358,7 @@ print("Events:", len(events), "event_id:", event_id)
 print("First 5 events:\n", events[:5])
 
 # Report
-REPORT_DIR = DATA_DIR / "Report"
+REPORT_DIR = DATA_DIR / "_archive" / "Report"
 
 # Helper
 def _maybe_show(fig):

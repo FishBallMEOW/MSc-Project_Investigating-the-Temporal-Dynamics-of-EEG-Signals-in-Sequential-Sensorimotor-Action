@@ -154,7 +154,7 @@ def plot_ers_erd_topomap(ers_erd_stream: np.ndarray,
 #%% Main
 # Define data directory
 BASE_DIR = Path(__file__).resolve().parent
-data_path = BASE_DIR / 'data' / 'Data_from_dataset'
+data_path = BASE_DIR / 'data' / '_archive' / 'Data_from_dataset'
 edf_files = sorted(glob.glob(os.path.join(str(data_path), '*.edf')))
 
 # Load & concatenate EDFs with annotations

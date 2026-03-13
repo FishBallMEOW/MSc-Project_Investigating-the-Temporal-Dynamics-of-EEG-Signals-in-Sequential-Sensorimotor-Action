@@ -535,6 +535,7 @@ if __name__ == "__main__":
     default_csv = str(
         Path(__file__).resolve().parents[2]
         / "data"
+        / "_archive"
         / "20250816_172416_2blocks"
         / "20250816_172416_eeg_with_markers_renamed.csv"
     )

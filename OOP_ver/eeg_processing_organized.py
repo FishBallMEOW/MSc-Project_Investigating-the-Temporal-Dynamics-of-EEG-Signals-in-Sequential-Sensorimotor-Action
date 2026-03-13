@@ -50,7 +50,7 @@ class Config:
     eegbci_runs: Sequence[int] = (4, 8, 12)
 
     # CSV
-    csv_path: str = str(DATA_DIR / 'Simulated_data' / 'simulated_eeg_with_markers_10Hz_ERS_5s.csv')
+    csv_path: str = str(DATA_DIR / '_archive' / 'Simulated_data' / 'simulated_eeg_with_markers_10Hz_ERS_5s.csv')
     time_col: str = 'timestamp'
     type_col: str = 'type'
     eeg_value: str = 'EEG'
@@ -61,7 +61,7 @@ class Config:
     csv_voltage_unit: str = 'uV'  # 'uV'|'mV'|'V'
 
     # ECoG (.mat)
-    ecog_mat_path: str = str(DATA_DIR / 'data_miller' / 'bp_im_t_h.mat')
+    ecog_mat_path: str = str(DATA_DIR / '_archive' / 'data_miller' / 'bp_im_t_h.mat')
     ecog_event_id: Dict[str, int] = None
     ecog_sfreq: float = 1000.0
     ecog_scale_uv: float = 0.0298
@@ -110,7 +110,7 @@ class Config:
 
     # Reporting
     make_report: bool = True
-    report_dir: Path = DATA_DIR / 'Report'
+    report_dir: Path = DATA_DIR / '_archive' / 'Report'
     out_dir: Path = Path('outputs')
 
     def __post_init__(self):
