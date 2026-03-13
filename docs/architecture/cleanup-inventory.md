@@ -4,47 +4,55 @@ This document records duplicate, historical, and generated material that should 
 
 ## Classification Defaults
 
-- `Archive-historical`: names containing `copy`, `backup`, `trash`, or files inside `OOP_ver/Pipeline_backups/`, unless the file is clearly generated output.
-- `Generated-output`: files inside `outputs/`, `OOP_ver/outputs/`, `OOP_ver/ersd_outputs/`, `OOP_ver/results/`, or any `__pycache__/` directory.
-- `Review-needed`: root-level standalone scripts and utilities whose long-term role is not yet clear.
-- `Keep-active-candidate`: non-copy Python pipeline files in `OOP_ver/`.
+- `Archive-historical`: names containing `copy`, `backup`, `trash`, or files inside `archive/` or `notebooks/archive/`, unless the file is clearly generated output.
+- `Generated-output`: files inside `artifacts/` or any `__pycache__/` directory.
+- `Review-needed`: active-adjacent pipeline variants that are still present in `src/pipelines/` but may later move to archive.
+- `Keep-active-candidate`: active source files in `src/` and the single working notebook in `notebooks/main/`.
 
 ## Inventory Groups
 
 ### Notebook Family: `eeg_process_pipeline*.ipynb`
 
-- `OOP_ver/eeg_process_pipeline.ipynb`: `Keep-active-candidate`
-- `OOP_ver/eeg_process_pipeline copy.ipynb`: `Archive-historical`
-- `OOP_ver/eeg_process_pipeline copy 2.ipynb`: `Archive-historical`
-- `OOP_ver/eeg_process_pipeline_ersd_added.ipynb`: `Archive-historical`
-- `OOP_ver/Pipeline_backups/eeg_process_pipeline copy.ipynb`: `Archive-historical`
-- `OOP_ver/Pipeline_backups/eeg_process_pipeline_backup.ipynb`: `Archive-historical`
-- `OOP_ver/Pipeline_backups/eeg_process_pipeline_backup_Aug28.ipynb`: `Archive-historical`
-- `OOP_ver/Pipeline_backups/eeg_process_pipeline_Aug29.ipynb`: `Archive-historical`
-- `OOP_ver/Pipeline_backups/eeg_process_pipeline_backup_20250829_221800.ipynb`: `Archive-historical`
-- `OOP_ver/Pipeline_backups/eeg_process_pipeline_updated.ipynb`: `Archive-historical`
+- `notebooks/archive/eeg_process_pipeline.ipynb`: `Archive-historical`
+- `notebooks/archive/eeg_process_pipeline copy.ipynb`: `Archive-historical`
+- `notebooks/archive/eeg_process_pipeline copy 2.ipynb`: `Archive-historical`
+- `notebooks/archive/eeg_process_pipeline_ersd_added.ipynb`: `Archive-historical`
+- `archive/pipeline_backups/Pipeline_backups/eeg_process_pipeline copy.ipynb`: `Archive-historical`
+- `archive/pipeline_backups/Pipeline_backups/eeg_process_pipeline_backup.ipynb`: `Archive-historical`
+- `archive/pipeline_backups/Pipeline_backups/eeg_process_pipeline_backup_Aug28.ipynb`: `Archive-historical`
+- `archive/pipeline_backups/Pipeline_backups/eeg_process_pipeline_Aug29.ipynb`: `Archive-historical`
+- `archive/pipeline_backups/Pipeline_backups/eeg_process_pipeline_backup_20250829_221800.ipynb`: `Archive-historical`
+- `archive/pipeline_backups/Pipeline_backups/eeg_process_pipeline_updated.ipynb`: `Archive-historical`
 
 ### Notebook Family: `EEG_processing_pipeline_ver_1.0*.ipynb`
 
-- `OOP_ver/EEG_processing_pipeline_ver_1.0.ipynb`: `Keep-active-candidate`
-- `OOP_ver/EEG_processing_pipeline_ver_1.0 copy.ipynb`: `Archive-historical`
-- `OOP_ver/EEG_processing_pipeline_ver_1.0 copy 2.ipynb`: `Archive-historical`
-- `OOP_ver/EEG_processing_pipeline_ver_1.0 copy 3.ipynb`: `Archive-historical`
+- `notebooks/main/eeg_analysis_main.ipynb`: `Keep-active-candidate`
+- `notebooks/archive/EEG_processing_pipeline_ver_1.0.ipynb`: `Archive-historical`
+- `notebooks/archive/EEG_processing_pipeline_ver_1.0 copy.ipynb`: `Archive-historical`
+- `notebooks/archive/EEG_processing_pipeline_ver_1.0 copy 2.ipynb`: `Archive-historical`
 
 ### Root Duplicate Pair
 
-- `plot.py`: `Review-needed`
-- `plot copy.py`: `Archive-historical`
+- `archive/legacy_source/root/plot.py`: `Archive-historical`
+- `archive/legacy_source/root/plot copy.py`: `Archive-historical`
 
 ### Historical Backup Area
 
-- Everything in `OOP_ver/Pipeline_backups/`: `Archive-historical`
+- Everything in `archive/pipeline_backups/`: `Archive-historical`
 
 ### Generated Duplicate Area
 
-- `OOP_ver/results/figs/`: `Generated-output`
-- `OOP_ver/results/figs/trash/`: `Generated-output`, explicitly non-canonical
+- `artifacts/results/figs/`: `Generated-output`
+- `artifacts/results/figs/trash/`: `Generated-output`, explicitly non-canonical
 - Repeated figure concepts across `figs/` and `figs/trash/` should be reviewed together in a later pass rather than deleted by filename pattern alone.
+
+### Active Pipeline Area
+
+- `src/pipelines/eeg_processing_organized.py`: `Keep-active-candidate`
+- `src/pipelines/eeg_processing.py`: `Review-needed`
+- `src/pipelines/ersd_pipeline.py`: `Review-needed`
+- `src/pipelines/process.py`: `Review-needed`
+- `src/pipelines/processing.py`: `Review-needed`
 
 ### Local Data Area
 
@@ -57,7 +65,7 @@ This document records duplicate, historical, and generated material that should 
 The next cleanup pass should:
 
 - compare notebook families to identify the latest meaningful working versions,
-- determine whether any root-level scripts duplicate `OOP_ver/` behavior,
+- determine whether the remaining support pipeline scripts should stay in `src/pipelines/` or move to archive,
 - consolidate data-path assumptions around `data/NIC2/` and keep non-active local data under `data/_archive/`,
 - define a policy for large result files and caches,
 - move only after a canonical file list has been agreed.

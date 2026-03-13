@@ -2,8 +2,8 @@
 
 - Owner: Codex
 - Date: 2026-03-13
-- Status: planned
-- Modules touched: `OOP_ver/`, root source files, `src/`, `notebooks/`, `archive/`, `artifacts/`, `docs/`
+- Status: completed
+- Modules touched: `src/`, `notebooks/`, `archive/`, `artifacts/`, `data/`, `docs/`, legacy `OOP_ver/`
 - Scope:
   - Dissolve `OOP_ver/` into named top-level active and archive folders
   - Promote active analysis code into `src/pipelines/`
@@ -11,4 +11,4 @@
   - Keep one active notebook and archive the rest
   - Separate generated artifacts from source directories
 - Soft lock:
-  - Planning only in this task note; no file moves executed yet
+  - Executed as a structural reorganization pass with only path and layout fixes required by the moves

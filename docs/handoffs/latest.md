@@ -1,5 +1,5 @@
 # Latest Handoff
 
-Current handoff: planning state captured by `docs/plans/2026-03-13-phase-3-structure-reorg.md`
+Current handoff: `docs/handoffs/2026-03-13-phase-3-structure-reorg.md`
 
-The latest planning state captures the agreed phase-3 structure decisions: dissolve `OOP_ver/`, move active code under `src/`, keep one main notebook under `notebooks/main/`, and archive the remaining legacy and MATLAB material.
+This handoff captures the executed phase-3 structure reorganization that moved active code under `src/`, promoted the single main notebook, archived historical source, and separated generated artifacts.

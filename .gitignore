@@ -4,6 +4,10 @@ data/*
 !data/NIC2/**
 data/_archive/
 
+# Generated artifacts
+artifacts/*
+!artifacts/.gitkeep
+
 # Python cache artifacts
 __pycache__/
 *.py[cod]

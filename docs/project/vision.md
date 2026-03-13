@@ -7,21 +7,21 @@ This repository preserves the code, notebooks, data references, and generated ar
 ## Current Framing
 
 - The repository is both a working project and an archive of late-stage submission-period material.
-- `OOP_ver/` is treated as the primary analysis workspace because it contains the clearest clustering of preprocessing, ERD/ERS analysis, notebooks, outputs, and result tables.
-- The repository root remains an umbrella space that contains earlier or parallel experiments, prototype scripts, and supporting files.
+- Active EEG analysis code now lives under `src/pipelines/`, with `eeg_processing_organized.py` as the current canonical entrypoint.
+- Active collection and replay utilities now live under `src/data_collection/`.
+- The repository root remains an umbrella space for data, docs, active source, generated artifacts, and preserved historical material.
 
 ## Near-Term Goal
 
 The immediate goal is to make the repository legible without changing analysis content:
 
-- document the structure,
-- identify likely active versus historical areas,
-- classify duplicate and generated materials,
-- preserve a safe baseline before any cleanup decisions.
+- separate active source from historical material,
+- keep only one obvious main notebook,
+- isolate generated outputs from source directories,
+- preserve provenance while making the active workflow easy to find.
 
 ## Non-Goals For This Pass
 
-- No code moves
-- No notebook rewrites
-- No deletion of duplicate files
-- No canonical pipeline selection beyond documenting likely candidates
+- No deletion of historical material
+- No deep refactor of the analysis internals
+- No attempt to merge all remaining pipeline variants into one codebase yet
