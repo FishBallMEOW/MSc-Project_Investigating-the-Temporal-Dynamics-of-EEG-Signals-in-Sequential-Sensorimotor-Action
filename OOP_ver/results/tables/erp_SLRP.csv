@@ -1,0 +1,4 @@
+component,modality,latency_s,amplitude_uV,channel
+S-LRP,V,0.74,-1.8507184512608348,LRP_V
+S-LRP,A,0.788,-0.562507005746137,LRP_A
+S-LRP,AV,0.696,-0.9550274764604406,LRP_AV

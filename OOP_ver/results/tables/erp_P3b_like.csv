@@ -1,0 +1,4 @@
+component,modality,latency_s,amplitude_uV,channel
+P3b_like,V,0.514,0.5312324292382877,CP_surr
+P3b_like,A,0.596,0.5835934641262641,CP_surr
+P3b_like,AV,0.36,0.395379385138486,CP_surr
