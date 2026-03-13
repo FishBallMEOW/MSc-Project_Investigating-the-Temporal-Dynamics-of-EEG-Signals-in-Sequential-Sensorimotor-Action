@@ -6,7 +6,7 @@ addpath('C:\Users\user\AppData\Roaming\MathWorks\MATLAB Add-Ons\Collections\Fiel
 ft_defaults
 
 % --- EDIT: file path
-dataset = 'D:\user\Files_without_backup\MSc_Project\Data\NIC2\20250820161249_img_multi\20250820161249_img_multi_Experiment.edf';  % <= change to your EDF(+)
+dataset = fullfile('data', 'NIC2', '20250820161249_img_multi', '20250820161249_img_multi_Experiment.edf');  % <= change to your EDF(+)
 
 % --- EDIT: analysis parameters
 channels_of_interest = {'C3','C4'};   % or 'all'

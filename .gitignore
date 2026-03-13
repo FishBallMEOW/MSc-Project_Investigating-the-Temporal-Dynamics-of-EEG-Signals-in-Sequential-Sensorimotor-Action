@@ -1,0 +1,9 @@
+# Local datasets and archives
+data/
+
+# Python cache artifacts
+__pycache__/
+*.py[cod]
+
+# Notebook checkpoints
+.ipynb_checkpoints/

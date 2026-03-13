@@ -1,0 +1,39 @@
+# Handoff: light-reorg-baseline
+
+- Date: 2026-03-13
+- Author: Codex
+- Summary: Added the initial documentation scaffold and repo map for the umbrella repository, with `OOP_ver/` documented as the primary analysis workspace.
+- Completed:
+  - Expanded `README.md` into a navigation page
+  - Added the first `docs/` structure required by `AGENTS.md`
+  - Documented top-level and `OOP_ver/` directory roles
+  - Recorded duplicate notebook families, backup areas, and generated duplicate outputs in a cleanup inventory
+- Files changed:
+  - `README.md`
+  - `docs/index.md`
+  - `docs/project/vision.md`
+  - `docs/architecture/README.md`
+  - `docs/architecture/cleanup-inventory.md`
+  - `docs/status/current.md`
+  - `docs/plans/2026-03-13-light-reorg-baseline.md`
+  - `docs/tasks/active/light-reorg-baseline.md`
+  - `docs/handoffs/latest.md`
+  - `docs/handoffs/2026-03-13-light-reorg-baseline.md`
+- Decisions made:
+  - Root is the umbrella project
+  - `OOP_ver/` is the primary analysis workspace
+  - Cleanup is classification-first, not deletion-first
+  - Baseline snapshot commit `c5ce4f3` is the safety point for later pruning
+- Validation performed:
+  - Verified docs entrypoints exist
+  - Verified repo map covers the current root and major `OOP_ver/` areas
+  - Verified no code, notebook, data, or output files were moved or rewritten
+- Open issues / risks:
+  - Canonical notebooks and pipeline scripts are still not selected
+  - Large result files and caches remain outside the documentation cleanup pass
+  - Root-level prototypes may overlap with `OOP_ver/` logic
+- Exact next steps:
+  - Review duplicate notebook families and identify likely canonical working versions
+  - Define a policy for large artifacts, generated outputs, and cache files
+  - Propose a low-risk archival layout before any deletions or moves
+- Suggested owner type: planner or cleanup-focused implementer

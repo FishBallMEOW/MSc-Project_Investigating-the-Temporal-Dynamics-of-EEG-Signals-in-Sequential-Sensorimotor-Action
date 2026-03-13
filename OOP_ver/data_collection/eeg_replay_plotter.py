@@ -26,6 +26,7 @@ import sys
 import json
 import math
 from collections import deque, defaultdict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -531,5 +532,10 @@ def main():
 
 
 if __name__ == "__main__":
-    default_csv = "D:/user/Files_without_backup/MSc_Project/Data/20250816_172416_2blocks/20250816_172416_eeg_with_markers_renamed.csv"
+    default_csv = str(
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "20250816_172416_2blocks"
+        / "20250816_172416_eeg_with_markers_renamed.csv"
+    )
     main()

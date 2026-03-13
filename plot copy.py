@@ -6,6 +6,7 @@ import numpy as np
 import mne
 import glob
 import os
+from pathlib import Path
 
 #%% Helper: Set montage
 def set_montage(edf_raw):
@@ -152,8 +153,9 @@ def plot_ers_erd_topomap(ers_erd_stream: np.ndarray,
 
 #%% Main
 # Define data directory
-data_path = 'D:/user/Files_without_backup/MSc_Project/Data/NIC2/20250820161249_img_multi'
-edf_files = sorted(glob.glob(os.path.join(data_path, '*.edf')))
+BASE_DIR = Path(__file__).resolve().parent
+data_path = BASE_DIR / 'data' / 'NIC2' / '20250820161249_img_multi'
+edf_files = sorted(glob.glob(os.path.join(str(data_path), '*.edf')))
 
 # Load & concatenate EDFs with annotations
 baselines = []

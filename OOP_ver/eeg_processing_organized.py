@@ -35,6 +35,9 @@ except Exception:
 
 from scipy.ndimage import gaussian_filter1d
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = REPO_ROOT / 'data'
+
 # =============================================================================
 # %% CONFIGURATION
 # =============================================================================
@@ -47,7 +50,7 @@ class Config:
     eegbci_runs: Sequence[int] = (4, 8, 12)
 
     # CSV
-    csv_path: str = r'D:/user/Files_without_backup/MSc_Project/Data/Simulated_data/simulated_eeg_with_markers_10Hz_ERS_5s.csv'
+    csv_path: str = str(DATA_DIR / 'Simulated_data' / 'simulated_eeg_with_markers_10Hz_ERS_5s.csv')
     time_col: str = 'timestamp'
     type_col: str = 'type'
     eeg_value: str = 'EEG'
@@ -58,13 +61,13 @@ class Config:
     csv_voltage_unit: str = 'uV'  # 'uV'|'mV'|'V'
 
     # ECoG (.mat)
-    ecog_mat_path: str = r'D:/user/Files_without_backup/MSc_Project/Data/data_miller/bp_im_t_h.mat'
+    ecog_mat_path: str = str(DATA_DIR / 'data_miller' / 'bp_im_t_h.mat')
     ecog_event_id: Dict[str, int] = None
     ecog_sfreq: float = 1000.0
     ecog_scale_uv: float = 0.0298
 
     # EDF
-    edf_path: str = r'D:/user/Files_without_backup/MSc_Project/Data/NIC2/20250820144519_img_auditory/20250820144519_img_auditory_Experiment.edf'
+    edf_path: str = str(DATA_DIR / 'NIC2' / '20250820144519_img_auditory' / '20250820144519_img_auditory_Experiment.edf')
 
     # Channel type + targets
     ch_type: str = 'eeg'
@@ -107,7 +110,7 @@ class Config:
 
     # Reporting
     make_report: bool = True
-    report_dir: Path = Path('D:/user/Files_without_backup/MSc_Project/Data/Report')
+    report_dir: Path = DATA_DIR / 'Report'
     out_dir: Path = Path('outputs')
 
     def __post_init__(self):
